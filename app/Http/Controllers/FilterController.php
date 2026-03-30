@@ -42,6 +42,34 @@ class FilterController extends Controller
         ]);
     }
 
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'            => 'required|string|max:64',
+            'filter_group_id' => 'required|integer',
+        ]);
+
+        $groupId = (int) $request->input('filter_group_id');
+        $maxSort = DB::connection('titi')->table('titi_filter')
+            ->where('filter_group_id', $groupId)->max('sort_order') ?? 0;
+
+        $filterId = DB::connection('titi')->table('titi_filter')
+            ->insertGetId([
+                'filter_group_id' => $groupId,
+                'sort_order'      => $maxSort + 1,
+            ], 'filter_id');
+
+        DB::connection('titi')->table('titi_filter_description')->insert([
+            'filter_id'       => $filterId,
+            'language_id'     => 2,
+            'filter_group_id' => $groupId,
+            'name'            => $request->input('name'),
+        ]);
+
+        return redirect()->route('filters.show', $filterId)
+            ->with('success', 'Filter „' . $request->input('name') . '" bol vytvorený.');
+    }
+
     public function search(Filter $filter, Request $request)
     {
         $q          = trim($request->get('q', ''));

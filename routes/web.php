@@ -21,6 +21,8 @@ Route::get('/dashboard', function () {
 
 Route::middleware('admin.auth')->group(function () {
     Route::get('/filters', [FilterGroupController::class, 'index'])->name('filters.index');
+    Route::post('/filter-groups', [FilterGroupController::class, 'store'])->name('filter-groups.store');
+    Route::post('/filters', [FilterController::class, 'store'])->name('filters.store');
     Route::get('/filters/{filter}/search', [FilterController::class, 'search'])->name('filters.search');
     Route::get('/filters/{filter}', [FilterController::class, 'show'])->name('filters.show');
     Route::post('/filters/{filter}/sync', [FilterController::class, 'sync'])->name('filters.sync');
