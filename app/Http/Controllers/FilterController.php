@@ -15,7 +15,6 @@ class FilterController extends Controller
         $filter->load(['description', 'group.description']);
 
         $assignedProducts = $filter->products()
-            ->where('mt', 1)
             ->where('titi_eshop', 1)
             ->where('mopcena', '>', 0)
             ->with([
@@ -59,7 +58,6 @@ class FilterController extends Controller
                 $join->on('titi_product.product_id', '=', 'titi_product_description.product_id')
                      ->where('titi_product_description.language_id', 2);
             })
-            ->where('titi_product.mt', 1)
             ->where('titi_product.titi_eshop', 1)
             ->where('titi_product.mopcena', '>', 0)
             ->when(strlen($q) >= 1, function ($query) use ($q) {
@@ -142,7 +140,6 @@ class FilterController extends Controller
 
         $ids = Product::join('titi_product_to_category', 'titi_product.product_id', '=', 'titi_product_to_category.product_id')
             ->where('titi_product_to_category.category_id', $categoryId)
-            ->where('titi_product.mt', 1)
             ->where('titi_product.titi_eshop', 1)
             ->where('titi_product.mopcena', '>', 0)
             ->pluck('titi_product.product_id');
