@@ -25,14 +25,21 @@ class FilterController extends Controller
             ->get()
             ->map(fn($p) => $this->formatProduct($p));
 
+        $assignedCategoryIds = DB::connection('titi')
+            ->table('titi_category_filter')
+            ->where('filter_id', $filter->filter_id)
+            ->pluck('category_id')
+            ->toArray();
+
         return Inertia::render('Filters/Show', [
             'filter' => [
                 'filter_id'  => $filter->filter_id,
                 'name'       => $filter->description->name ?? '',
                 'group_name' => $filter->group->description->name ?? '',
             ],
-            'assignedProducts' => $assignedProducts,
-            'categories'       => $this->getCategoryTree(),
+            'assignedProducts'    => $assignedProducts,
+            'categories'          => $this->getCategoryTree(),
+            'assignedCategoryIds' => $assignedCategoryIds,
         ]);
     }
 
@@ -41,7 +48,8 @@ class FilterController extends Controller
         $q          = trim($request->get('q', ''));
         $categoryId = (int) $request->get('category_id', 0);
 
-        if (strlen($q) < 1) {
+        // Require at least a query OR a category to be set
+        if (strlen($q) < 1 && $categoryId <= 0) {
             return response()->json([]);
         }
 
@@ -54,10 +62,12 @@ class FilterController extends Controller
             ->where('titi_product.mt', 1)
             ->where('titi_product.titi_eshop', 1)
             ->where('titi_product.mopcena', '>', 0)
-            ->where(function ($query) use ($q) {
-                $query->where('titi_product_description.name', 'LIKE', "%{$q}%")
-                      ->orWhere('titi_product_description.description', 'LIKE', "%{$q}%")
-                      ->orWhere('titi_product_description.ai_search_enrichment', 'LIKE', "%{$q}%");
+            ->when(strlen($q) >= 1, function ($query) use ($q) {
+                $query->where(function ($q2) use ($q) {
+                    $q2->where('titi_product_description.name', 'LIKE', "%{$q}%")
+                       ->orWhere('titi_product_description.description', 'LIKE', "%{$q}%")
+                       ->orWhere('titi_product_description.ai_search_enrichment', 'LIKE', "%{$q}%");
+                });
             })
             ->when($categoryId > 0, function ($query) use ($categoryId) {
                 $query->whereExists(function ($sub) use ($categoryId) {
@@ -74,7 +84,7 @@ class FilterController extends Controller
                 'titi_product_description.ai_search_enrichment as aie'
             )
             ->with('mainImage')
-            ->limit(40)
+            ->limit(strlen($q) >= 1 ? 40 : 120)
             ->get()
             ->map(function ($p) use ($assignedIds) {
                 $image    = $p->mainImage ? $p->mainImage->image : null;
@@ -100,6 +110,26 @@ class FilterController extends Controller
         $filter->products()->sync($productIds);
 
         return response()->json(['success' => true, 'count' => count($productIds)]);
+    }
+
+    public function syncCategories(Filter $filter, Request $request)
+    {
+        $categoryIds = array_values(array_unique(
+            array_map('intval', (array) $request->input('category_ids', []))
+        ));
+
+        $table = DB::connection('titi')->table('titi_category_filter');
+        $table->where('filter_id', $filter->filter_id)->delete();
+
+        if (!empty($categoryIds)) {
+            $rows = array_map(fn($catId) => [
+                'filter_id'   => $filter->filter_id,
+                'category_id' => $catId,
+            ], $categoryIds);
+            $table->insert($rows);
+        }
+
+        return response()->json(['success' => true, 'count' => count($categoryIds)]);
     }
 
     public function categoryProductIds(Request $request)

@@ -113,8 +113,43 @@
                         </div>
                     </div>
 
-                    <!-- ═══ RIGHT: Vyhľadávanie ════════════════════════════════ -->
+                    <!-- ═══ RIGHT: Tabs ═══════════════════════════════════════ -->
                     <div class="flex-1 flex flex-col rounded-lg bg-white shadow overflow-hidden">
+
+                        <!-- Tab bar -->
+                        <div class="flex flex-shrink-0 border-b border-gray-100">
+                            <button
+                                @click="activeTab = 'products'"
+                                class="flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors"
+                                :class="activeTab === 'products'
+                                    ? 'border-indigo-500 text-indigo-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            >
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                                </svg>
+                                Produkty
+                            </button>
+                            <button
+                                @click="activeTab = 'categories'"
+                                class="flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors"
+                                :class="activeTab === 'categories'
+                                    ? 'border-indigo-500 text-indigo-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            >
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                                </svg>
+                                Kategórie
+                                <span class="rounded-full px-1.5 py-0.5 text-xs"
+                                      :class="categoryHasChanges ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'">
+                                    {{ assignedCategoryIds.size }}
+                                </span>
+                            </button>
+                        </div>
+
+                        <!-- ══ Tab: Produkty ══════════════════════════════════════ -->
+                        <div v-show="activeTab === 'products'" class="flex-1 flex flex-col overflow-hidden">
 
                         <!-- Filters bar -->
                         <div class="border-b border-gray-100 px-4 py-3 space-y-2">
@@ -221,6 +256,25 @@
                                 </div>
                             </div>
 
+                            <!-- ── Show all in category button ── -->
+                            <div v-if="selectedCategoryId > 0" class="flex items-center gap-2">
+                                <button
+                                    @click="showAllInCategory"
+                                    class="flex items-center gap-1.5 rounded-md bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-100 transition-colors"
+                                >
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                                    </svg>
+                                    Zobraziť všetky produkty z kategórie
+                                    <span v-if="categoryProductIds" class="rounded-full bg-indigo-100 px-1.5 text-indigo-500">
+                                        {{ categoryProductIds.size }}
+                                    </span>
+                                </button>
+                                <span v-if="showingAllInCategory && !isSearching" class="text-xs text-gray-400">
+                                    (max. 120)
+                                </span>
+                            </div>
+
                             <!-- ── Product search input ── -->
                             <div class="relative">
                                 <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -270,7 +324,7 @@
                             </div>
 
                             <!-- Placeholder -->
-                            <div v-else-if="!searchQuery"
+                            <div v-else-if="!searchQuery && !showingAllInCategory"
                                  class="flex flex-col items-center justify-center py-16 text-gray-300">
                                 <svg class="h-12 w-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -282,7 +336,10 @@
                             <!-- No results -->
                             <div v-else-if="displayedResults.length === 0 && !isSearching"
                                  class="flex flex-col items-center justify-center py-16 text-gray-300">
-                                <p v-if="searchResults.length === 0" class="text-sm">Žiadne produkty nenájdené pre „{{ searchQuery }}"</p>
+                                <p v-if="searchResults.length === 0" class="text-sm">
+                                    <template v-if="showingAllInCategory">Žiadne produkty v tejto kategórii.</template>
+                                    <template v-else>Žiadne produkty nenájdené pre „{{ searchQuery }}"</template>
+                                </p>
                                 <p v-else class="text-sm">Žiadne {{ assignedFilter === 'assigned' ? 'priradené' : 'nepriradené' }} produkty v týchto výsledkoch</p>
                             </div>
 
@@ -352,11 +409,133 @@
                         </div>
 
                         <div v-if="searchResults.length > 0"
-                             class="border-t border-gray-100 px-4 py-2 text-xs text-gray-400 flex items-center gap-2">
+                             class="flex-shrink-0 border-t border-gray-100 px-4 py-2 text-xs text-gray-400 flex items-center gap-2">
                             <span>{{ displayedResults.length }} z {{ searchResults.length }} výsledkov</span>
-                            <span v-if="searchResults.length === 40" class="text-gray-300">(max. 40)</span>
+                            <span v-if="searchResults.length >= 40" class="text-gray-300">(max. {{ showingAllInCategory ? 120 : 40 }})</span>
                         </div>
-                    </div>
+
+                        </div><!-- end products tab -->
+
+                        <!-- ══ Tab: Kategórie ═════════════════════════════════════ -->
+                        <div v-show="activeTab === 'categories'" class="flex-1 flex flex-col overflow-hidden">
+
+                            <!-- Add category typeahead -->
+                            <div class="flex-shrink-0 border-b border-gray-100 px-4 py-3" ref="catAssignWrapperRef">
+                                <label class="mb-1.5 block text-xs font-medium text-gray-500">Pridať kategóriu</label>
+                                <div class="relative">
+                                    <div
+                                        class="flex w-full cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors"
+                                        :class="showCatAssignMenu
+                                            ? 'border-indigo-400 ring-1 ring-indigo-400 bg-white'
+                                            : 'border-gray-200 bg-white hover:border-gray-300'"
+                                        @click="openCatAssignMenu"
+                                    >
+                                        <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                        <input
+                                            v-if="showCatAssignMenu"
+                                            ref="catAssignInputRef"
+                                            v-model="catAssignQuery"
+                                            type="text"
+                                            placeholder="Hľadaj kategóriu..."
+                                            class="flex-1 bg-transparent outline-none placeholder-gray-400 text-gray-700 text-sm"
+                                            @keydown.enter.prevent="addFirstFilteredCategory"
+                                            @click.stop
+                                        />
+                                        <span v-else class="flex-1 text-gray-400 text-sm">Vybrať kategóriu...</span>
+                                        <svg class="h-4 w-4 flex-shrink-0 text-gray-400 transition-transform"
+                                             :class="{ 'rotate-180': showCatAssignMenu }"
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </div>
+
+                                    <!-- Dropdown -->
+                                    <div v-if="showCatAssignMenu"
+                                         class="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                        <div v-if="filteredCatAssign.length === 0"
+                                             class="px-3 py-4 text-sm text-center text-gray-400 italic">
+                                            {{ catAssignQuery ? 'Žiadne zhody' : 'Všetky kategórie sú priradené' }}
+                                        </div>
+                                        <div v-for="cat in filteredCatAssign"
+                                             :key="cat.category_id"
+                                             @click="addCategory(cat)"
+                                             class="flex items-center cursor-pointer hover:bg-indigo-50 transition-colors"
+                                             :style="{ paddingLeft: (12 + cat.depth * 14) + 'px',
+                                                       paddingRight: '12px',
+                                                       paddingTop: cat.depth === 0 ? '8px' : '6px',
+                                                       paddingBottom: cat.depth === 0 ? '8px' : '6px' }"
+                                        >
+                                            <span v-if="cat.depth > 0" class="mr-1.5 text-gray-300 text-xs select-none">
+                                                {{ '└' + '─'.repeat(cat.depth - 1) }}
+                                            </span>
+                                            <span class="text-sm truncate"
+                                                  :class="cat.depth === 0 ? 'font-semibold text-gray-700' : 'text-gray-600'"
+                                                  v-html="highlightCatAssign(cat.name)">
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Assigned categories list -->
+                            <div class="flex-1 overflow-y-auto">
+                                <div v-if="assignedCategoriesList.length === 0"
+                                     class="flex flex-col items-center justify-center py-12 text-gray-300">
+                                    <svg class="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                                    </svg>
+                                    <p class="text-sm">Žiadne kategórie</p>
+                                </div>
+
+                                <div v-for="cat in assignedCategoriesList" :key="cat.category_id"
+                                     class="flex items-center gap-2 border-b border-gray-50 px-4 py-2.5 hover:bg-gray-50 transition-colors">
+                                    <!-- Depth indent -->
+                                    <div class="flex-1 flex items-center gap-1 min-w-0">
+                                        <span v-if="cat.depth > 0" class="flex-shrink-0 text-gray-300 text-xs select-none">
+                                            {{ '└' + '─'.repeat(cat.depth - 1) }}
+                                        </span>
+                                        <span class="truncate text-sm"
+                                              :class="cat.depth === 0 ? 'font-semibold text-gray-800' : 'text-gray-600'">
+                                            {{ cat.name }}
+                                        </span>
+                                    </div>
+                                    <button @click="removeCategory(cat.category_id)"
+                                            class="flex-shrink-0 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-400 transition-colors"
+                                            title="Odstrániť">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Save categories bar -->
+                            <div class="flex-shrink-0 border-t border-gray-100 bg-gray-50 px-4 py-3 flex items-center justify-between">
+                                <span class="text-sm text-gray-500">
+                                    <strong class="text-gray-800">{{ assignedCategoryIds.size }}</strong> kategórií
+                                    <span v-if="categoryHasChanges" class="ml-2 text-amber-500 font-medium">● neuložené zmeny</span>
+                                </span>
+                                <button
+                                    @click="saveCategoryAssignments"
+                                    :disabled="isSavingCategories || !categoryHasChanges"
+                                    class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors"
+                                    :class="categoryHasChanges && !isSavingCategories
+                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
+                                >
+                                    <svg v-if="isSavingCategories" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                    </svg>
+                                    {{ isSavingCategories ? 'Ukladám...' : 'Uložiť kategórie' }}
+                                </button>
+                            </div>
+
+                        </div><!-- end categories tab -->
+
+                    </div><!-- end right panel -->
                 </div>
 
                 <!-- ═══ Product detail modal ══════════════════════════════════ -->
@@ -592,10 +771,14 @@ import axios from 'axios';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 
 const props = defineProps({
-    filter:           Object,
-    assignedProducts: Array,
-    categories:       Array, // [{ category_id, name, depth }] — flat tree order
+    filter:               Object,
+    assignedProducts:     Array,
+    categories:           Array,   // [{ category_id, name, depth }] — flat tree order
+    assignedCategoryIds:  Array,   // [category_id, ...] from titi_category_filter
 });
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+const activeTab = ref('products'); // 'products' | 'categories'
 
 // ─── Product detail modal ─────────────────────────────────────────────────────
 
@@ -643,9 +826,10 @@ async function confirmAndSave() {
 
 function onKeydown(e) {
     if (e.key === 'Escape') {
-        if (showConfirmModal.value) { showConfirmModal.value = false; return; }
-        if (modalProduct.value)     { closeModal(); return; }
-        if (showCategoryMenu.value) { closeCategoryMenu(); }
+        if (showConfirmModal.value)  { showConfirmModal.value = false; return; }
+        if (modalProduct.value)      { closeModal(); return; }
+        if (showCatAssignMenu.value) { closeCatAssignMenu(); return; }
+        if (showCategoryMenu.value)  { closeCategoryMenu(); }
     }
 }
 onMounted(() => document.addEventListener('keydown', onKeydown));
@@ -755,13 +939,108 @@ const selectedIds   = reactive(new Set(props.assignedProducts.map(p => p.product
 const knownProducts = reactive(new Map(props.assignedProducts.map(p => [p.product_id, p])));
 const originalIds   = new Set(props.assignedProducts.map(p => p.product_id));
 
+// ─── Category assignments (titi_category_filter) ─────────────────────────────
+
+const assignedCategoryIds   = reactive(new Set(props.assignedCategoryIds ?? []));
+const originalCategoryIds   = new Set(props.assignedCategoryIds ?? []);
+const isSavingCategories     = ref(false);
+
+const categoryHasChanges = computed(() => {
+    if (assignedCategoryIds.size !== originalCategoryIds.size) return true;
+    for (const id of assignedCategoryIds) { if (!originalCategoryIds.has(id)) return true; }
+    return false;
+});
+
+// Flat list of assigned categories in tree order (for display)
+const assignedCategoriesList = computed(() =>
+    props.categories.filter(c => assignedCategoryIds.has(c.category_id))
+);
+
+// Category assignment typeahead refs
+const catAssignQuery    = ref('');
+const showCatAssignMenu = ref(false);
+const catAssignWrapperRef = ref(null);
+const catAssignInputRef   = ref(null);
+
+const filteredCatAssign = computed(() => {
+    const q = catAssignQuery.value.trim().toLowerCase();
+    return props.categories.filter(c => {
+        if (assignedCategoryIds.has(c.category_id)) return false; // already assigned
+        return !q || c.name.toLowerCase().includes(q);
+    });
+});
+
+function highlightCatAssign(text) {
+    const q = catAssignQuery.value.trim();
+    if (!q || !text) return text;
+    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(re, '<mark class="bg-yellow-200 rounded">$1</mark>');
+}
+
+async function openCatAssignMenu() {
+    if (showCatAssignMenu.value) return;
+    catAssignQuery.value   = '';
+    showCatAssignMenu.value = true;
+    await nextTick();
+    catAssignInputRef.value?.focus();
+}
+
+function closeCatAssignMenu() {
+    showCatAssignMenu.value = false;
+    catAssignQuery.value    = '';
+}
+
+function addCategory(cat) {
+    assignedCategoryIds.add(cat.category_id);
+    closeCatAssignMenu();
+}
+
+function removeCategory(catId) {
+    assignedCategoryIds.delete(catId);
+}
+
+function addFirstFilteredCategory() {
+    if (filteredCatAssign.value.length > 0) addCategory(filteredCatAssign.value[0]);
+}
+
+// Click-outside for category assignment dropdown
+function onDocumentClickCatAssign(e) {
+    if (catAssignWrapperRef.value && !catAssignWrapperRef.value.contains(e.target)) {
+        closeCatAssignMenu();
+    }
+}
+onMounted(() => document.addEventListener('mousedown', onDocumentClickCatAssign));
+onUnmounted(() => document.removeEventListener('mousedown', onDocumentClickCatAssign));
+
+async function saveCategoryAssignments() {
+    if (!categoryHasChanges.value || isSavingCategories.value) return;
+    isSavingCategories.value = true;
+    try {
+        await axios.post(
+            route('filters.sync-categories', props.filter.filter_id),
+            { category_ids: [...assignedCategoryIds] },
+            { headers: { 'X-Inertia': undefined } }
+        );
+        originalCategoryIds.clear();
+        assignedCategoryIds.forEach(id => originalCategoryIds.add(id));
+        assignedCategoryIds.add(-1); assignedCategoryIds.delete(-1); // nudge reactivity
+        showToast('Kategórie boli úspešne uložené.');
+    } catch (e) {
+        console.error('Save categories failed', e);
+        showToast('Nastala chyba pri ukladaní kategórií.', 'error');
+    } finally {
+        isSavingCategories.value = false;
+    }
+}
+
 // ─── Search ───────────────────────────────────────────────────────────────────
 
-const searchQuery   = ref('');
-const searchResults = ref([]);
-const isSearching   = ref(false);
-const isSaving      = ref(false);
-let   searchTimer   = null;
+const searchQuery          = ref('');
+const searchResults        = ref([]);
+const isSearching          = ref(false);
+const isSaving             = ref(false);
+const showingAllInCategory = ref(false);
+let   searchTimer          = null;
 
 // ─── Assigned filter ──────────────────────────────────────────────────────────
 
@@ -831,6 +1110,7 @@ function toggleProduct(productId) {
 }
 
 function onSearchInput() {
+    showingAllInCategory.value = false;
     clearTimeout(searchTimer);
     if (!searchQuery.value.trim()) {
         searchResults.value = [];
@@ -839,10 +1119,17 @@ function onSearchInput() {
     searchTimer = setTimeout(doSearch, 300);
 }
 
+function showAllInCategory() {
+    searchQuery.value          = '';
+    showingAllInCategory.value = true;
+    clearTimeout(searchTimer);
+    doSearch();
+}
+
 async function onCategoryChange() {
-    // Fetch product IDs for the selected category (for left panel filtering)
     await fetchCategoryProductIds(selectedCategoryId.value);
-    // Re-run search if there's an active query
+    showingAllInCategory.value = false;
+    searchResults.value = [];
     if (searchQuery.value.trim()) {
         clearTimeout(searchTimer);
         await doSearch();
@@ -866,8 +1153,9 @@ async function doSearch() {
 }
 
 function clearSearch() {
-    searchQuery.value   = '';
-    searchResults.value = [];
+    searchQuery.value          = '';
+    searchResults.value        = [];
+    showingAllInCategory.value = false;
 }
 
 function highlight(text) {
