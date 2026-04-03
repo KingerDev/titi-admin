@@ -54,8 +54,15 @@ class CategoryController extends Controller
                   ->where('pd.language_id', 2);
             })
             ->where('pc.category_id', $categoryId)
+            ->where('titi_product.status', 1)
             ->where('titi_product.titi_eshop', 1)
             ->where('titi_product.mopcena', '>', 0)
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('titi_stavskladu')
+                    ->whereColumn('titi_stavskladu.product_id', 'titi_product.product_id')
+                    ->where('titi_stavskladu.celkom', '>', 1);
+            })
             ->select(
                 'titi_product.product_id',
                 'pd.name as desc_name',
@@ -68,10 +75,11 @@ class CategoryController extends Controller
                 $image    = $p->mainImage ? $p->mainImage->image : null;
                 $descText = $this->safeUtf8($p->desc_text ?? '');
                 return [
-                    'product_id'  => $p->product_id,
-                    'name'        => $this->safeUtf8($p->desc_name ?? ''),
-                    'description' => $descText ? mb_substr(strip_tags($descText), 0, 200) : '',
-                    'image'       => $image ? "https://titi.shopweb.sk/{$image}" : null,
+                    'product_id'       => $p->product_id,
+                    'name'             => $this->safeUtf8($p->desc_name ?? ''),
+                    'description'      => $descText ? mb_substr(strip_tags($descText), 0, 300) : '',
+                    'description_html' => $descText,
+                    'image'            => $image ? "https://titi.shopweb.sk/{$image}" : null,
                 ];
             });
 

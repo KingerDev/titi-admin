@@ -77,11 +77,11 @@
                         @click="openModal(product)"
                     >
                         <!-- Image -->
-                        <div class="aspect-square overflow-hidden bg-gray-50">
+                        <div class="overflow-hidden bg-white flex items-center justify-center" style="height: 180px">
                             <img v-if="product.image" :src="product.image" :alt="product.name"
-                                 class="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                 class="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
                                  @error="$event.target.style.display='none'" />
-                            <div v-else class="flex h-full items-center justify-center">
+                            <div v-else class="flex h-full items-center justify-center w-full bg-gray-50">
                                 <svg class="h-8 w-8 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                           d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -90,12 +90,9 @@
                         </div>
 
                         <!-- Info -->
-                        <div class="flex flex-col p-2 flex-1">
+                        <div class="flex flex-col p-2 flex-1 border-t border-gray-100">
                             <p class="text-xs font-medium text-gray-800 leading-tight line-clamp-2"
                                v-html="highlight(product.name)"></p>
-                            <p v-if="product.description"
-                               class="mt-1 text-xs text-gray-400 leading-tight line-clamp-2"
-                               v-html="highlight(product.description)"></p>
                         </div>
 
                         <!-- Hover overlay -->
@@ -181,7 +178,8 @@
                                         : 'border-transparent text-gray-500 hover:text-gray-700'"
                                 >
                                     {{ tab.label }}
-                                    <span class="ml-1.5 rounded-full px-1.5 text-xs"
+                                    <span v-if="tab.key !== 'description'"
+                                          class="ml-1.5 rounded-full px-1.5 text-xs"
                                           :class="activeTab === tab.key ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'">
                                         {{ tab.key === 'categories' ? modal.assignedCategories.length : modal.assignedFilters.length }}
                                     </span>
@@ -387,13 +385,36 @@
                                 </div>
                             </div>
 
+                            <!-- ── Tab: Popis ── -->
+                            <div v-show="activeTab === 'description'" class="flex-1 overflow-y-auto px-5 py-4">
+                                <!-- Image large -->
+                                <div v-if="modal.product?.image" class="mb-4 flex justify-center">
+                                    <img :src="modal.product.image" :alt="modal.product.name"
+                                         class="max-h-64 max-w-full object-contain rounded-lg"
+                                         @error="$event.target.style.display='none'" />
+                                </div>
+                                <!-- Description HTML -->
+                                <div v-if="modal.product?.description_html"
+                                     class="prose prose-sm max-w-none text-gray-700 text-sm leading-relaxed"
+                                     v-html="modal.product.description_html">
+                                </div>
+                                <div v-else class="flex flex-col items-center justify-center py-10 text-gray-300">
+                                    <svg class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    <p class="text-sm">Žiadny popis</p>
+                                </div>
+                            </div>
+
                             <!-- Footer -->
                             <div class="flex items-center justify-end gap-3 border-t border-gray-100 px-5 py-4 flex-shrink-0">
                                 <button @click="closeModal"
                                         class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
-                                    Zrušiť
+                                    {{ activeTab === 'description' ? 'Zavrieť' : 'Zrušiť' }}
                                 </button>
-                                <button @click="saveAll"
+                                <button v-if="activeTab !== 'description'"
+                                        @click="saveAll"
                                         :disabled="modal.saving"
                                         class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
                                     <svg v-if="modal.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -427,8 +448,9 @@ const props = defineProps({
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const tabs = [
-    { key: 'categories', label: 'Kategórie' },
-    { key: 'filters',    label: 'Filtre' },
+    { key: 'filters',     label: 'Filtre' },
+    { key: 'categories',  label: 'Kategórie' },
+    { key: 'description', label: 'Popis' },
 ];
 const activeTab = ref('filters');
 
