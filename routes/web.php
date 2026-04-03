@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\FilterController;
 use App\Http\Controllers\FilterGroupController;
 use Illuminate\Foundation\Application;
@@ -28,6 +29,13 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/filters/{filter}/sync', [FilterController::class, 'sync'])->name('filters.sync');
     Route::post('/filters/{filter}/sync-categories', [FilterController::class, 'syncCategories'])->name('filters.sync-categories');
     Route::get('/category-product-ids', [FilterController::class, 'categoryProductIds'])->name('category.product-ids');
+
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/{categoryId}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::get('/products/{productId}/categories', [CategoryController::class, 'getProductCategories'])->name('products.categories');
+    Route::post('/products/{productId}/sync-categories', [CategoryController::class, 'syncProductCategories'])->name('products.sync-categories');
+    Route::get('/products/{productId}/filters', [CategoryController::class, 'getProductFilters'])->name('products.filters');
+    Route::post('/products/{productId}/sync-filters', [CategoryController::class, 'syncProductFilters'])->name('products.sync-filters');
 });
 
 require __DIR__.'/auth.php';

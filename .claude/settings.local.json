@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(php artisan:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Read(//Users/martinbalaz/.nvm/versions/node/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(nvm use:*)"
     ]
   }
 }
