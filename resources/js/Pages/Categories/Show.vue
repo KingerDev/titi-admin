@@ -655,13 +655,28 @@
                                             </div>
                                             <div v-if="showFilterMenu"
                                                  class="absolute left-0 right-0 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                                <div v-if="availableFilters.length === 0" class="px-3 py-4 text-sm text-center text-gray-400 italic">
+                                                <div v-if="availableFilters.length === 0 && !canCreateFilter" class="px-3 py-4 text-sm text-center text-gray-400 italic">
                                                     {{ filterQuery ? 'Žiadne zhody' : 'Všetky filtre z tejto skupiny sú priradené' }}
                                                 </div>
                                                 <div v-for="f in availableFilters" :key="f.filter_id"
                                                      @click="addFilter(f)"
                                                      class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-indigo-50 transition-colors">
                                                     <span class="text-sm text-gray-700 truncate" v-html="hlFilter(f.name)"></span>
+                                                </div>
+                                                <!-- Create new filter option -->
+                                                <div v-if="canCreateFilter"
+                                                     @click="createNewFilterInline"
+                                                     class="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-emerald-50 transition-colors border-t border-gray-100">
+                                                    <svg v-if="creatingInlineFilter" class="h-4 w-4 animate-spin text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                                    </svg>
+                                                    <svg v-else class="h-4 w-4 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                    </svg>
+                                                    <span class="text-sm font-medium text-emerald-700">
+                                                        Vytvoriť „<span class="font-semibold">{{ filterQuery.trim() }}</span>"
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1332,11 +1347,55 @@ function addFilter(f) {
 }
 
 function addFirstFilter() {
-    if (availableFilters.value.length > 0) addFilter(availableFilters.value[0]);
+    if (availableFilters.value.length > 0) {
+        addFilter(availableFilters.value[0]);
+    } else if (canCreateFilter.value) {
+        createNewFilterInline();
+    }
 }
 
 function removeFilter(id) {
     modal.value.assignedFilters = modal.value.assignedFilters.filter(f => f.filter_id !== id);
+}
+
+// ─── Create new filter inline ────────────────────────────────────────────────
+
+const creatingInlineFilter = ref(false);
+
+const canCreateFilter = computed(() => {
+    if (!filterQuery.value.trim() || !selectedGroup.value) return false;
+    const q = filterQuery.value.trim().toLowerCase();
+    // Don't show "create" if an exact match already exists (assigned or not)
+    const allInGroup = props.filters.filter(f => f.group_name === selectedGroup.value);
+    return !allInGroup.some(f => f.name.toLowerCase() === q);
+});
+
+async function createNewFilterInline() {
+    if (!canCreateFilter.value || creatingInlineFilter.value) return;
+    const name = filterQuery.value.trim();
+    const groupName = selectedGroup.value;
+
+    creatingInlineFilter.value = true;
+    try {
+        const res = await axios.post(
+            route('products.create-filter', modal.value.product.product_id),
+            { group_name: groupName, filter_name: name }
+        );
+        const newFilter = {
+            filter_id:  res.data.filter_id,
+            group_id:   res.data.group_id,
+            group_name: res.data.group_name,
+            name:       res.data.name,
+        };
+        modal.value.assignedFilters.push(newFilter);
+        filterQuery.value = '';
+        showFilterMenu.value = false;
+        showToast(`Filter „${name}" bol vytvorený a priradený`);
+    } catch {
+        showToast(`Nepodarilo sa vytvoriť filter „${name}"`, 'error');
+    } finally {
+        creatingInlineFilter.value = false;
+    }
 }
 
 // ─── AI suggest ───────────────────────────────────────────────────────────────
