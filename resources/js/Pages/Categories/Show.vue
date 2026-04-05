@@ -355,6 +355,24 @@
                         </div>
 
                         <template v-else>
+                            <!-- Product description (always visible, collapsible) -->
+                            <div v-if="modal.product?.description_html" class="border-b border-gray-100 flex-shrink-0">
+                                <button
+                                    @click="descExpanded = !descExpanded"
+                                    class="flex items-center gap-2 w-full px-5 py-2.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                    <svg class="h-3.5 w-3.5 transition-transform" :class="descExpanded ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                    Popis produktu
+                                </button>
+                                <div v-show="descExpanded" class="px-5 pb-3 max-h-52 overflow-y-auto">
+                                    <div class="prose prose-sm max-w-none text-gray-600 text-xs leading-relaxed"
+                                         v-html="modal.product.description_html">
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Tabs -->
                             <div class="flex border-b border-gray-100 flex-shrink-0">
                                 <button
@@ -676,36 +694,14 @@
                                 </div>
                             </div>
 
-                            <!-- ── Tab: Popis ── -->
-                            <div v-show="activeTab === 'description'" class="flex-1 overflow-y-auto px-5 py-4">
-                                <!-- Image large -->
-                                <div v-if="modal.product?.image" class="mb-4 flex justify-center">
-                                    <img :src="modal.product.image" :alt="modal.product.name"
-                                         class="max-h-64 max-w-full object-contain rounded-lg"
-                                         @error="$event.target.style.display='none'" />
-                                </div>
-                                <!-- Description HTML -->
-                                <div v-if="modal.product?.description_html"
-                                     class="prose prose-sm max-w-none text-gray-700 text-sm leading-relaxed"
-                                     v-html="modal.product.description_html">
-                                </div>
-                                <div v-else class="flex flex-col items-center justify-center py-10 text-gray-300">
-                                    <svg class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
-                                    <p class="text-sm">Žiadny popis</p>
-                                </div>
-                            </div>
 
                             <!-- Footer -->
                             <div class="flex items-center justify-end gap-3 border-t border-gray-100 px-5 py-4 flex-shrink-0">
                                 <button @click="closeModal"
                                         class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
-                                    {{ activeTab === 'description' ? 'Zavrieť' : 'Zrušiť' }}
+                                    Zrušiť
                                 </button>
-                                <button v-if="activeTab !== 'description'"
-                                        @click="saveAll"
+                                <button @click="saveAll"
                                         :disabled="modal.saving"
                                         class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
                                     <svg v-if="modal.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -857,9 +853,9 @@ async function confirmReview() {
 const tabs = [
     { key: 'filters',     label: 'Filtre' },
     { key: 'categories',  label: 'Kategórie' },
-    { key: 'description', label: 'Popis' },
 ];
 const activeTab = ref('filters');
+const descExpanded = ref(true);
 
 // ─── Product search ───────────────────────────────────────────────────────────
 
