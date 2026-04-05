@@ -99,6 +99,112 @@
                     </div>
                 </div>
 
+                <!-- Filter bar -->
+                <div class="mb-4 flex flex-wrap items-end gap-3">
+
+                    <!-- Filter by group (searchable) -->
+                    <div class="relative flex-1 min-w-[200px] max-w-xs" ref="barGroupWrapRef">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Skupina filtrov</label>
+                        <div class="flex w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm cursor-pointer transition-colors"
+                             :class="showBarGroupMenu ? 'border-indigo-400 ring-1 ring-indigo-400' : 'border-gray-200 hover:border-gray-300'"
+                             @click="openBarGroupMenu">
+                            <svg class="h-3.5 w-3.5 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+                            </svg>
+                            <input v-if="showBarGroupMenu" ref="barGroupInputRef" v-model="barGroupQuery" type="text"
+                                   placeholder="Hľadaj skupinu..."
+                                   class="flex-1 bg-transparent outline-none placeholder-gray-400 text-gray-700 text-sm min-w-0"
+                                   @click.stop />
+                            <span v-else class="flex-1 truncate text-sm" :class="filterByGroup ? 'text-gray-800 font-medium' : 'text-gray-400'">
+                                {{ filterByGroup || 'Vybrať skupinu...' }}
+                            </span>
+                            <button v-if="filterByGroup && !showBarGroupMenu" @click.stop="filterByGroup = ''; filterByValue = ''; filterByMode = 'has'"
+                                    class="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div v-if="showBarGroupMenu"
+                             class="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                            <div v-if="barGroupFiltered.length === 0" class="px-3 py-3 text-sm text-center text-gray-400 italic">Žiadne zhody</div>
+                            <div v-for="gn in barGroupFiltered" :key="gn"
+                                 @click="selectBarGroup(gn)"
+                                 class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-indigo-50 transition-colors text-sm"
+                                 :class="filterByGroup === gn ? 'bg-indigo-50 font-medium text-indigo-700' : 'text-gray-700'">
+                                {{ gn }}
+                                <svg v-if="filterByGroup === gn" class="ml-auto h-3.5 w-3.5 text-indigo-500 flex-shrink-0"
+                                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter by specific value (searchable, only when group selected) -->
+                    <div v-if="filterByGroup" class="relative flex-1 min-w-[200px] max-w-xs" ref="barValueWrapRef">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Hodnota filtra</label>
+                        <div class="flex w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm cursor-pointer transition-colors"
+                             :class="showBarValueMenu ? 'border-indigo-400 ring-1 ring-indigo-400' : 'border-gray-200 hover:border-gray-300'"
+                             @click="openBarValueMenu">
+                            <svg class="h-3.5 w-3.5 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+                            </svg>
+                            <input v-if="showBarValueMenu" ref="barValueInputRef" v-model="barValueQuery" type="text"
+                                   placeholder="Hľadaj filter..."
+                                   class="flex-1 bg-transparent outline-none placeholder-gray-400 text-gray-700 text-sm min-w-0"
+                                   @click.stop />
+                            <span v-else class="flex-1 truncate text-sm" :class="barValueLabel ? 'text-gray-800 font-medium' : 'text-gray-400'">
+                                {{ barValueLabel || 'Všetky hodnoty...' }}
+                            </span>
+                            <button v-if="filterByValue && !showBarValueMenu" @click.stop="filterByValue = ''"
+                                    class="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div v-if="showBarValueMenu"
+                             class="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                            <div v-if="barValueFiltered.length === 0" class="px-3 py-3 text-sm text-center text-gray-400 italic">Žiadne zhody</div>
+                            <div v-for="f in barValueFiltered" :key="f.filter_id"
+                                 @click="selectBarValue(f)"
+                                 class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-indigo-50 transition-colors text-sm"
+                                 :class="Number(filterByValue) === f.filter_id ? 'bg-indigo-50 font-medium text-indigo-700' : 'text-gray-700'">
+                                {{ f.name }}
+                                <svg v-if="Number(filterByValue) === f.filter_id" class="ml-auto h-3.5 w-3.5 text-indigo-500 flex-shrink-0"
+                                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Has / Has not toggle -->
+                    <div v-if="filterByGroup" class="flex items-center gap-2 pb-0.5">
+                        <label class="flex items-center gap-1.5 cursor-pointer text-sm"
+                               :class="filterByMode === 'has' ? 'text-green-700 font-medium' : 'text-gray-500'">
+                            <input type="radio" v-model="filterByMode" value="has"
+                                   class="text-green-600 focus:ring-green-500 h-3.5 w-3.5" />
+                            Má
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-sm"
+                               :class="filterByMode === 'has_not' ? 'text-red-700 font-medium' : 'text-gray-500'">
+                            <input type="radio" v-model="filterByMode" value="has_not"
+                                   class="text-red-600 focus:ring-red-500 h-3.5 w-3.5" />
+                            Nemá
+                        </label>
+                    </div>
+
+                    <!-- Active filter badge -->
+                    <div v-if="filterByGroup" class="flex items-center pb-0.5">
+                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                              :class="filterByMode === 'has' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'">
+                            {{ filteredProducts.length }} / {{ products.length }}
+                        </span>
+                    </div>
+                </div>
+
                 <!-- Product grid -->
                 <div v-if="filteredProducts.length === 0"
                      class="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-white py-20 text-gray-300">
@@ -720,7 +826,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -857,17 +963,150 @@ const tabs = [
 const activeTab = ref('filters');
 const descExpanded = ref(true);
 
-// ─── Product search ───────────────────────────────────────────────────────────
+// ─── Product search & filter bar ─────────────────────────────────────────────
 
-const searchQuery = ref('');
+const searchQuery  = ref('');
+const filterByGroup = ref('');
+const filterByValue = ref('');
+const filterByMode  = ref('has'); // 'has' or 'has_not'
+
+// Reset value when group changes
+watch(filterByGroup, () => { filterByValue.value = ''; });
+
+// All unique group names from filters prop (sorted)
+const uniqueGroupNames = computed(() => {
+    const names = new Set(props.filters.map(f => f.group_name));
+    return [...names].sort((a, b) => a.localeCompare(b, 'sk'));
+});
+
+// Filters within selected group
+const filtersInSelectedGroup = computed(() => {
+    if (!filterByGroup.value) return [];
+    return props.filters
+        .filter(f => f.group_name === filterByGroup.value)
+        .sort((a, b) => a.name.localeCompare(b.name, 'sk'));
+});
+
+// ─── Filter bar searchable dropdowns ─────────────────────────────────────────
+
+const barGroupWrapRef  = ref(null);
+const barGroupInputRef = ref(null);
+const showBarGroupMenu = ref(false);
+const barGroupQuery    = ref('');
+
+const barValueWrapRef  = ref(null);
+const barValueInputRef = ref(null);
+const showBarValueMenu = ref(false);
+const barValueQuery    = ref('');
+
+const barGroupFiltered = computed(() => {
+    if (!barGroupQuery.value.trim()) return uniqueGroupNames.value;
+    const q = barGroupQuery.value.toLowerCase();
+    return uniqueGroupNames.value.filter(n => n.toLowerCase().includes(q));
+});
+
+const barValueFiltered = computed(() => {
+    if (!barValueQuery.value.trim()) return filtersInSelectedGroup.value;
+    const q = barValueQuery.value.toLowerCase();
+    return filtersInSelectedGroup.value.filter(f => f.name.toLowerCase().includes(q));
+});
+
+const barValueLabel = computed(() => {
+    if (!filterByValue.value) return '';
+    const f = props.filters.find(f => f.filter_id === Number(filterByValue.value));
+    return f ? f.name : '';
+});
+
+async function openBarGroupMenu() {
+    showBarGroupMenu.value = true;
+    barGroupQuery.value = '';
+    await nextTick();
+    barGroupInputRef.value?.focus();
+}
+
+function selectBarGroup(gn) {
+    filterByGroup.value = gn;
+    barGroupQuery.value = '';
+    showBarGroupMenu.value = false;
+}
+
+async function openBarValueMenu() {
+    showBarValueMenu.value = true;
+    barValueQuery.value = '';
+    await nextTick();
+    barValueInputRef.value?.focus();
+}
+
+function selectBarValue(f) {
+    filterByValue.value = String(f.filter_id);
+    barValueQuery.value = '';
+    showBarValueMenu.value = false;
+}
+
+// Build a product→filter_ids index (fetched lazily per category)
+const productFilterIndex = ref({}); // { productId: Set<filterId> }
+const productFilterIndexLoaded = ref(false);
+
+async function loadProductFilterIndex() {
+    if (productFilterIndexLoaded.value) return;
+    try {
+        const res = await axios.get(route('categories.product-filters', props.category.category_id));
+        const idx = {};
+        for (const [pid, fids] of Object.entries(res.data)) {
+            idx[pid] = new Set(fids);
+        }
+        productFilterIndex.value = idx;
+        productFilterIndexLoaded.value = true;
+    } catch {
+        showToast('Nepodarilo sa načítať index filtrov', 'error');
+    }
+}
+
+// Load index when filter bar is first used
+watch(filterByGroup, (val) => {
+    if (val && !productFilterIndexLoaded.value) {
+        loadProductFilterIndex();
+    }
+});
 
 const filteredProducts = computed(() => {
-    if (!searchQuery.value.trim()) return props.products;
-    const q = searchQuery.value.toLowerCase();
-    return props.products.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description && p.description.toLowerCase().includes(q))
-    );
+    let list = props.products;
+
+    // Text search
+    if (searchQuery.value.trim()) {
+        const q = searchQuery.value.toLowerCase();
+        list = list.filter(p =>
+            p.name.toLowerCase().includes(q) ||
+            (p.description && p.description.toLowerCase().includes(q))
+        );
+    }
+
+    // Filter by group / specific filter value
+    if (filterByGroup.value && productFilterIndexLoaded.value) {
+        const idx = productFilterIndex.value;
+        const wantHas = filterByMode.value === 'has';
+
+        if (filterByValue.value) {
+            // Filter by specific filter_id
+            const fid = Number(filterByValue.value);
+            list = list.filter(p => {
+                const has = idx[p.product_id]?.has(fid) ?? false;
+                return wantHas ? has : !has;
+            });
+        } else {
+            // Filter by group — product has ANY filter from this group
+            const groupFilterIds = new Set(
+                props.filters.filter(f => f.group_name === filterByGroup.value).map(f => f.filter_id)
+            );
+            list = list.filter(p => {
+                const pFilters = idx[p.product_id];
+                const has = pFilters ? [...pFilters].some(fid => groupFilterIds.has(fid)) : false;
+                return wantHas ? has : !has;
+            });
+        }
+    }
+
+    return list;
 });
 
 function highlight(text) {
@@ -1179,6 +1418,8 @@ function handleOutsideClick(e) {
         showFilterMenu.value = false;
         showGroupMenu.value = false;
     }
+    if (barGroupWrapRef.value && !barGroupWrapRef.value.contains(e.target)) showBarGroupMenu.value = false;
+    if (barValueWrapRef.value && !barValueWrapRef.value.contains(e.target)) showBarValueMenu.value = false;
 }
 onMounted(() => document.addEventListener('mousedown', handleOutsideClick));
 onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsideClick));

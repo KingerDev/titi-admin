@@ -32,6 +32,7 @@ Route::middleware('admin.auth')->group(function () {
 
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('/categories/{categoryId}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::get('/categories/{categoryId}/product-filters', [CategoryController::class, 'getProductFilterIndex'])->name('categories.product-filters');
     Route::get('/products/{productId}/categories', [CategoryController::class, 'getProductCategories'])->name('products.categories');
     Route::post('/products/{productId}/sync-categories', [CategoryController::class, 'syncProductCategories'])->name('products.sync-categories');
     Route::get('/products/{productId}/filters', [CategoryController::class, 'getProductFilters'])->name('products.filters');

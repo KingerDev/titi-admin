@@ -146,6 +146,27 @@ class CategoryController extends Controller
         ]);
     }
 
+    /**
+     * Return { productId: [filterId, ...] } for all products in a category.
+     * Used by the frontend filter bar to filter products by assigned filters.
+     */
+    public function getProductFilterIndex(int $categoryId)
+    {
+        $rows = DB::connection('titi')
+            ->table('titi_product_to_category as pc')
+            ->join('titi_product_filter as pf', 'pc.product_id', '=', 'pf.product_id')
+            ->where('pc.category_id', $categoryId)
+            ->select('pc.product_id', 'pf.filter_id')
+            ->get();
+
+        $index = [];
+        foreach ($rows as $r) {
+            $index[$r->product_id][] = (int) $r->filter_id;
+        }
+
+        return response()->json($index);
+    }
+
     public function getProductCategories(int $productId)
     {
         $categoryIds = DB::connection('titi')
