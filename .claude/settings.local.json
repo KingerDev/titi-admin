@@ -6,7 +6,17 @@
       "Read(//Users/martinbalaz/.nvm/versions/node/**)",
       "Read(//usr/local/bin/**)",
       "Bash(source ~/.nvm/nvm.sh)",
-      "Bash(nvm use:*)"
+      "Bash(nvm use:*)",
+      "Bash(/usr/bin/php artisan:*)",
+      "Bash(php -l app/Http/Controllers/CategoryController.php)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(echo $PATH)",
+      "Bash(ls /opt/homebrew/bin/php*)",
+      "Bash(/opt/homebrew/bin/php -l /Users/martinbalaz/www/laravel_projects/titi-admin/app/Http/Controllers/CategoryController.php)",
+      "Bash(grep -r \"titi_product\\\\|titi_filter\\\\|titi_category\" /Users/martinbalaz/www/laravel_projects/titi-admin/app/Models --include=*.php)",
+      "Bash(grep -r \"suggestFilters\\\\|titi_product_filter\\\\|titi_filter\" /Users/martinbalaz/www/laravel_projects/titi-admin/tests --include=*.php)",
+      "Bash(/opt/homebrew/bin/php artisan tinker --execute=\":*)",
+      "Bash(/opt/homebrew/bin/php artisan:*)"
     ]
   }
 }

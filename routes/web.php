@@ -36,6 +36,8 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/products/{productId}/sync-categories', [CategoryController::class, 'syncProductCategories'])->name('products.sync-categories');
     Route::get('/products/{productId}/filters', [CategoryController::class, 'getProductFilters'])->name('products.filters');
     Route::post('/products/{productId}/sync-filters', [CategoryController::class, 'syncProductFilters'])->name('products.sync-filters');
+    Route::post('/products/{productId}/suggest-filters', [CategoryController::class, 'suggestFilters'])->name('products.suggest-filters');
+    Route::post('/products/{productId}/create-filter', [CategoryController::class, 'createAndAssignFilter'])->name('products.create-filter');
 });
 
 require __DIR__.'/auth.php';

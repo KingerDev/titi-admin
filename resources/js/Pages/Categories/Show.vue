@@ -33,12 +33,52 @@
         <div class="py-8">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-                <!-- Header info + search -->
-                <div class="mb-5 flex items-center justify-between">
-                    <p class="text-sm text-gray-500">
-                        <span class="font-semibold text-gray-700">{{ products.length }}</span> produktov v kategórii
-                    </p>
-                    <div class="relative w-72">
+                <!-- Header info + batch button + search -->
+                <div class="mb-5 flex flex-wrap items-center gap-3">
+
+                    <!-- Left: count + batch button -->
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <p class="text-sm text-gray-500 whitespace-nowrap">
+                            <span class="font-semibold text-gray-700">{{ products.length }}</span> produktov
+                            <span v-if="unassignedCount > 0" class="text-amber-600">
+                                · <span class="font-semibold">{{ unassignedCount }}</span> bez filtrov
+                            </span>
+                            <span v-else class="text-green-600"> · všetky majú filtre ✓</span>
+                        </p>
+
+                        <button
+                            v-if="unassignedCount > 0 || batch.running"
+                            @click="startBatchAssign"
+                            :disabled="batch.running"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-60 transition-colors whitespace-nowrap"
+                        >
+                            <svg v-if="batch.running" class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                            </svg>
+                            <svg v-else class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                            <span v-if="batch.running">{{ batch.done }}&nbsp;/&nbsp;{{ batch.total }}</span>
+                            <span v-else>AI: priradiť filtre ({{ unassignedCount }})</span>
+                        </button>
+                    </div>
+
+                    <!-- Progress bar -->
+                    <div v-if="batch.running" class="w-full order-last">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                <div class="h-full rounded-full bg-indigo-400 transition-all duration-300"
+                                     :style="{ width: (batch.total ? (batch.done / batch.total * 100) : 0) + '%' }">
+                                </div>
+                            </div>
+                            <span class="text-xs text-gray-400 whitespace-nowrap">{{ batch.assigned }} priradených</span>
+                        </div>
+                    </div>
+
+                    <!-- Search -->
+                    <div class="relative w-72 flex-shrink-0">
                         <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none"
                              fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -76,6 +116,14 @@
                         class="group relative flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer"
                         @click="openModal(product)"
                     >
+                        <!-- Filter status dot -->
+                        <div class="absolute top-2 right-2 z-10">
+                            <div class="h-2.5 w-2.5 rounded-full shadow-sm"
+                                 :class="hasFilters(product.product_id) ? 'bg-green-400' : 'bg-gray-300'"
+                                 :title="hasFilters(product.product_id) ? 'Má priradené filtre' : 'Bez filtrov'">
+                            </div>
+                        </div>
+
                         <!-- Image -->
                         <div class="overflow-hidden bg-white flex items-center justify-center" style="height: 180px">
                             <img v-if="product.image" :src="product.image" :alt="product.name"
@@ -105,6 +153,147 @@
                 </div>
             </div>
         </div>
+
+        <!-- ══ Review modal (batch AI results) ══════════════════════════════ -->
+        <Transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="review.open"
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+                 @click.self="review.open = false">
+
+                <Transition
+                    enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0 scale-95"
+                    enter-to-class="opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-150"
+                    leave-from-class="opacity-100 scale-100"
+                    leave-to-class="opacity-0 scale-95"
+                >
+                    <div v-if="review.open"
+                         class="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl flex flex-col"
+                         style="max-height: 88vh">
+
+                        <!-- Header -->
+                        <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 flex-shrink-0">
+                            <div>
+                                <h2 class="text-base font-semibold text-gray-800">Skontroluj návrhy AI</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    <span class="font-medium text-gray-600">{{ reviewActiveItems.length }}</span> produktov ·
+                                    <span class="font-medium text-gray-600">{{ reviewTotalFilters }}</span> filtrov
+                                    <span v-if="reviewLowConfidenceCount > 0" class="text-amber-600">
+                                        · {{ reviewLowConfidenceCount }} s niz. istotou
+                                    </span>
+                                </p>
+                            </div>
+                            <button @click="review.open = false"
+                                    class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Product list -->
+                        <div class="flex-1 overflow-y-auto divide-y divide-gray-50">
+                            <div v-for="(item, itemIdx) in review.items" :key="item.product.product_id"
+                                 class="flex items-start gap-3 px-6 py-3 transition-opacity"
+                                 :class="item.skip || item.filters.length === 0 ? 'opacity-30' : ''">
+
+                                <!-- Thumbnail -->
+                                <div class="h-11 w-11 flex-shrink-0 overflow-hidden rounded-md bg-gray-100 border border-gray-100">
+                                    <img v-if="item.product.image"
+                                         :src="item.product.image" :alt="item.product.name"
+                                         class="h-full w-full object-contain"
+                                         @error="$event.target.style.display='none'" />
+                                </div>
+
+                                <!-- Name + description + filters -->
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-800 leading-tight truncate mb-1">
+                                        {{ item.product.name }}
+                                    </p>
+                                    <div v-if="item.product.description" class="mb-1.5">
+                                        <p class="text-xs text-gray-400 leading-relaxed"
+                                           :class="item.descExpanded ? '' : 'line-clamp-2'">
+                                            {{ item.product.description }}
+                                        </p>
+                                        <button
+                                            @click="item.descExpanded = !item.descExpanded"
+                                            class="mt-0.5 text-xs text-indigo-400 hover:text-indigo-600 transition-colors"
+                                        >
+                                            {{ item.descExpanded ? 'Skryť ▲' : 'Zobraziť celý popis ▼' }}
+                                        </button>
+                                    </div>
+                                    <div v-if="item.filters.length > 0" class="flex flex-wrap gap-1.5">
+                                        <span
+                                            v-for="(f, fi) in item.filters"
+                                            :key="fi"
+                                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                                            :class="confidenceChipClass(f.confidence, f.is_new)"
+                                        >
+                                            <span class="opacity-60 text-xs">{{ f.group_name }}:</span>
+                                            {{ f.name }}
+                                            <span v-if="f.is_new" class="font-bold text-xs">+</span>
+                                            <span v-if="f.confidence === 'low'" class="opacity-50 text-xs ml-0.5">AI</span>
+                                            <button
+                                                @click="removeReviewFilter(itemIdx, fi)"
+                                                class="ml-0.5 rounded-full transition-colors hover:text-red-500 text-current opacity-40 hover:opacity-100"
+                                                title="Odstrániť"
+                                            >
+                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <p v-else class="text-xs text-gray-300 italic">všetky filtre odstránené</p>
+                                </div>
+
+                                <!-- Skip entire product toggle -->
+                                <button
+                                    @click="item.skip = !item.skip"
+                                    class="flex-shrink-0 mt-0.5 rounded-md px-2 py-1 text-xs font-medium transition-colors"
+                                    :class="item.skip
+                                        ? 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                        : 'text-gray-300 hover:text-red-400 hover:bg-red-50'"
+                                    :title="item.skip ? 'Obnoviť' : 'Preskočiť produkt'"
+                                >
+                                    {{ item.skip ? 'Obnoviť' : 'Preskočiť' }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 flex-shrink-0">
+                            <button @click="review.open = false"
+                                    class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                                Zrušiť
+                            </button>
+                            <button
+                                @click="confirmReview"
+                                :disabled="review.saving || reviewActiveItems.length === 0"
+                                class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                            >
+                                <svg v-if="review.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                </svg>
+                                <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Potvrdiť a uložiť ({{ reviewActiveItems.length }} produktov)
+                            </button>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+        </Transition>
 
         <!-- ══ Modal ══════════════════════════════════════════════════════════ -->
         <Transition
@@ -355,6 +544,108 @@
                                     </div>
                                 </div>
 
+                                <!-- AI suggest button -->
+                                <div class="flex-shrink-0 px-5 py-2 border-b border-gray-100">
+                                    <button
+                                        @click="suggestFilters"
+                                        :disabled="modal.suggesting"
+                                        class="inline-flex w-full items-center justify-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                                    >
+                                        <svg v-if="modal.suggesting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                        </svg>
+                                        <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                        </svg>
+                                        {{ modal.suggesting ? 'AI analyzuje produkt...' : 'Navrhnúť filtre pomocou AI' }}
+                                    </button>
+                                </div>
+
+                                <!-- AI suggestions: existing filters -->
+                                <div v-if="aiSuggestions.length > 0"
+                                     class="flex-shrink-0 border-b border-amber-100 bg-amber-50 px-5 py-3">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <p class="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                            </svg>
+                                            AI návrh ({{ aiSuggestions.length }})
+                                        </p>
+                                        <div class="flex items-center gap-2">
+                                            <button @click="acceptAllSuggestions"
+                                                    class="text-xs font-medium text-amber-700 hover:text-amber-900 underline transition-colors">
+                                                Prijať všetky
+                                            </button>
+                                            <button @click="aiSuggestions = []"
+                                                    class="text-amber-400 hover:text-amber-600 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <span
+                                            v-for="f in aiSuggestions"
+                                            :key="f.filter_id"
+                                            @click="acceptSuggestion(f)"
+                                            class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer hover:opacity-80 transition-all"
+                                            :class="confidenceChipClass(f.confidence, false)"
+                                            title="Klikni pre pridanie"
+                                        >
+                                            <span class="opacity-60 text-xs">{{ f.group_name }}:</span>
+                                            {{ f.name }}
+                                            <span v-if="f.confidence === 'low'" class="opacity-50 text-xs">AI</span>
+                                            <svg class="h-3 w-3 opacity-50 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- AI suggestions: new filters to create -->
+                                <div v-if="aiNewFilters.length > 0"
+                                     class="flex-shrink-0 border-b border-emerald-100 bg-emerald-50 px-5 py-3">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <p class="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            Nové filtre na vytvorenie ({{ aiNewFilters.length }})
+                                        </p>
+                                        <button @click="aiNewFilters = []"
+                                                class="text-emerald-400 hover:text-emerald-600 transition-colors">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <button
+                                            v-for="(f, idx) in aiNewFilters"
+                                            :key="idx"
+                                            @click="createAndAssignFilter(f, idx)"
+                                            :disabled="f.creating"
+                                            class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium disabled:opacity-60 hover:opacity-80 transition-all"
+                                            :class="confidenceChipClass(f.confidence, true)"
+                                            title="Klikni pre vytvorenie a priradenie"
+                                        >
+                                            <svg v-if="f.creating" class="h-3 w-3 animate-spin opacity-50 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                            </svg>
+                                            <span class="opacity-60 text-xs">{{ f.group_name }}:</span>
+                                            {{ f.name }}
+                                            <span v-if="f.confidence === 'low'" class="opacity-50 text-xs">AI</span>
+                                            <span v-if="!f.creating" class="font-bold text-xs">+</span>
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <!-- Assigned filters -->
                                 <div class="flex-1 overflow-y-auto px-5 py-3">
                                     <div v-if="modal.assignedFilters.length === 0"
@@ -445,6 +736,122 @@ const props = defineProps({
     filters:    Array,
 });
 
+// ─── Filter status tracking ───────────────────────────────────────────────────
+// Initialized from server data; updated locally after batch/manual assignment
+
+const hasFiltersSet = ref(new Set(
+    props.products.filter(p => p.has_filters).map(p => p.product_id)
+));
+
+function hasFilters(productId) {
+    return hasFiltersSet.value.has(productId);
+}
+
+const unassignedCount = computed(
+    () => props.products.filter(p => !hasFiltersSet.value.has(p.product_id)).length
+);
+
+// ─── Batch AI assignment ──────────────────────────────────────────────────────
+
+const batch = ref({ running: false, total: 0, done: 0 });
+
+// Review modal — shown after batch finishes, before anything is saved
+const review = ref({ open: false, items: [], saving: false });
+
+const reviewActiveItems = computed(() =>
+    review.value.items.filter(item => !item.skip && item.filters.length > 0)
+);
+const reviewTotalFilters = computed(() =>
+    reviewActiveItems.value.reduce((sum, item) => sum + item.filters.length, 0)
+);
+const reviewLowConfidenceCount = computed(() =>
+    reviewActiveItems.value.reduce((sum, item) =>
+        sum + item.filters.filter(f => f.confidence === 'low').length, 0)
+);
+
+function confidenceChipClass(confidence, isNew) {
+    if (confidence === 'high') {
+        return isNew
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : 'bg-violet-50 text-violet-700 border border-violet-100';
+    }
+    if (confidence === 'medium') {
+        return 'bg-amber-50 text-amber-700 border border-amber-200';
+    }
+    // low
+    return 'bg-gray-50 text-gray-600 border border-dashed border-gray-300';
+}
+
+async function startBatchAssign() {
+    const targets = props.products.filter(p => !hasFiltersSet.value.has(p.product_id));
+    if (targets.length === 0) return;
+
+    batch.value = { running: true, total: targets.length, done: 0 };
+    const collected = [];
+
+    for (const product of targets) {
+        try {
+            const res = await axios.post(route('products.suggest-filters', product.product_id));
+            const filters = (res.data.suggestions ?? []).map(s => ({ ...s }));
+            if (filters.length > 0) {
+                collected.push({ product, filters, skip: false, descExpanded: false });
+            }
+        } catch { /* skip */ }
+
+        batch.value.done++;
+    }
+
+    batch.value.running = false;
+
+    if (collected.length === 0) {
+        showToast('Nenašli sa žiadne filtre na priradenie');
+        return;
+    }
+
+    review.value = { open: true, items: collected, saving: false };
+}
+
+function removeReviewFilter(itemIdx, filterIdx) {
+    review.value.items[itemIdx].filters.splice(filterIdx, 1);
+}
+
+async function confirmReview() {
+    review.value.saving = true;
+    let saved = 0;
+
+    for (const item of reviewActiveItems.value) {
+        try {
+            const filterIds = [];
+
+            for (const f of item.filters) {
+                if (f.is_new) {
+                    // Create new filter value, assign to product, get its ID
+                    const res = await axios.post(
+                        route('products.create-filter', item.product.product_id),
+                        { group_name: f.group_name, filter_name: f.name }
+                    );
+                    filterIds.push(res.data.filter_id);
+                } else {
+                    filterIds.push(f.filter_id);
+                }
+            }
+
+            if (filterIds.length > 0) {
+                await axios.post(
+                    route('products.sync-filters', item.product.product_id),
+                    { filter_ids: filterIds }
+                );
+                hasFiltersSet.value.add(item.product.product_id);
+                saved++;
+            }
+        } catch { /* skip */ }
+    }
+
+    review.value.saving = false;
+    review.value.open   = false;
+    showToast(`Uložené — ${saved} produktom priradené filtre`);
+}
+
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const tabs = [
@@ -501,7 +908,9 @@ const modal = ref({
 });
 
 async function openModal(product) {
-    modal.value = { open: true, product, loading: true, saving: false, assignedCategories: [], assignedFilters: [] };
+    modal.value = { open: true, product, loading: true, saving: false, suggesting: false, assignedCategories: [], assignedFilters: [] };
+    aiSuggestions.value = [];
+    aiNewFilters.value  = [];
     activeTab.value = 'filters';
     catQuery.value = '';
     filterQuery.value = '';
@@ -542,6 +951,10 @@ async function saveAll() {
             axios.post(route('products.sync-categories', modal.value.product.product_id), { category_ids: catIds }),
             axios.post(route('products.sync-filters', modal.value.product.product_id), { filter_ids: filterIds }),
         ]);
+        // Update local filter status dot
+        if (filterIds.length > 0) {
+            hasFiltersSet.value.add(modal.value.product.product_id);
+        }
         showToast(`Uložené — ${catIds.length} kategórií, ${filterIds.length} filtrov`);
         closeModal();
     } catch {
@@ -689,6 +1102,77 @@ function addFirstFilter() {
 
 function removeFilter(id) {
     modal.value.assignedFilters = modal.value.assignedFilters.filter(f => f.filter_id !== id);
+}
+
+// ─── AI suggest ───────────────────────────────────────────────────────────────
+
+const aiSuggestions = ref([]);
+const aiNewFilters  = ref([]);
+
+async function suggestFilters() {
+    modal.value.suggesting = true;
+    aiSuggestions.value = [];
+    aiNewFilters.value  = [];
+    try {
+        const res = await axios.post(route('products.suggest-filters', modal.value.product.product_id));
+        const suggestions = res.data.suggestions ?? [];
+        const assignedIds = new Set(modal.value.assignedFilters.map(f => f.filter_id));
+
+        // Existing filters (not yet assigned)
+        aiSuggestions.value = suggestions
+            .filter(s => !s.is_new && s.filter_id && !assignedIds.has(s.filter_id))
+            .map(s => ({ ...filterMap.value[s.filter_id], confidence: s.confidence }))
+            .filter(Boolean);
+
+        // New filters to create
+        aiNewFilters.value = suggestions
+            .filter(s => s.is_new)
+            .map(s => ({ ...s, creating: false }));
+
+        if (aiSuggestions.value.length === 0 && aiNewFilters.value.length === 0) {
+            showToast('Nenašli sa vhodné filtre');
+        }
+    } catch {
+        showToast('Návrh filtrov zlyhal', 'error');
+    } finally {
+        modal.value.suggesting = false;
+    }
+}
+
+async function createAndAssignFilter(f, idx) {
+    aiNewFilters.value[idx].creating = true;
+    try {
+        const res = await axios.post(
+            route('products.create-filter', modal.value.product.product_id),
+            { group_name: f.group_name, filter_name: f.name }
+        );
+        // Add to assigned filters and update filterMap for future use
+        const newFilter = {
+            filter_id:  res.data.filter_id,
+            group_id:   res.data.group_id,
+            group_name: res.data.group_name,
+            name:       res.data.name,
+        };
+        modal.value.assignedFilters.push(newFilter);
+        // Remove from new suggestions
+        aiNewFilters.value.splice(idx, 1);
+        showToast(`Filter „${f.name}" bol vytvorený a priradený`);
+    } catch {
+        aiNewFilters.value[idx].creating = false;
+        showToast(`Nepodarilo sa vytvoriť filter „${f.name}"`, 'error');
+    }
+}
+
+function acceptSuggestion(f) {
+    modal.value.assignedFilters.push(f);
+    aiSuggestions.value = aiSuggestions.value.filter(s => s.filter_id !== f.filter_id);
+}
+
+function acceptAllSuggestions() {
+    for (const f of aiSuggestions.value) {
+        modal.value.assignedFilters.push(f);
+    }
+    aiSuggestions.value = [];
 }
 
 // ─── Outside click ────────────────────────────────────────────────────────────
