@@ -16,7 +16,13 @@
       "Bash(grep -r \"titi_product\\\\|titi_filter\\\\|titi_category\" /Users/martinbalaz/www/laravel_projects/titi-admin/app/Models --include=*.php)",
       "Bash(grep -r \"suggestFilters\\\\|titi_product_filter\\\\|titi_filter\" /Users/martinbalaz/www/laravel_projects/titi-admin/tests --include=*.php)",
       "Bash(/opt/homebrew/bin/php artisan tinker --execute=\":*)",
-      "Bash(/opt/homebrew/bin/php artisan:*)"
+      "Bash(/opt/homebrew/bin/php artisan:*)",
+      "Bash(/opt/homebrew/bin/php -l app/Http/Controllers/ProductController.php)",
+      "Bash(/opt/homebrew/bin/php -l app/Traits/ProductSimilarityTrait.php)",
+      "Bash(/opt/homebrew/bin/php -l app/Models/ProductVariant.php)",
+      "Bash(/opt/homebrew/bin/php -l app/Models/ProductRelated.php)",
+      "Bash(/opt/homebrew/bin/php -l app/Models/Product.php)",
+      "Bash(/opt/homebrew/bin/php -l /Users/martinbalaz/www/laravel_projects/titi-admin/app/Http/Controllers/ProductController.php)"
     ]
   }
 }

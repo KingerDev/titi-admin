@@ -49,7 +49,7 @@
                         <button
                             v-if="unassignedCount > 0 || batch.running"
                             @click="startBatchAssign"
-                            :disabled="batch.running"
+                            :disabled="batch.running || batchVariants.running || batchRelated.running"
                             class="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-60 transition-colors whitespace-nowrap"
                         >
                             <svg v-if="batch.running" class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -62,6 +62,42 @@
                             </svg>
                             <span v-if="batch.running">{{ batch.done }}&nbsp;/&nbsp;{{ batch.total }}</span>
                             <span v-else>AI: priradiť filtre ({{ unassignedCount }})</span>
+                        </button>
+
+                        <!-- Batch: varianty -->
+                        <button
+                            @click="startBatchVariants"
+                            :disabled="batch.running || batchVariants.running || batchRelated.running"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 transition-colors whitespace-nowrap"
+                        >
+                            <svg v-if="batchVariants.running" class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                            </svg>
+                            <svg v-else class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                            </svg>
+                            <span v-if="batchVariants.running">{{ batchVariants.done }}&nbsp;/&nbsp;{{ batchVariants.total }}</span>
+                            <span v-else>AI: varianty</span>
+                        </button>
+
+                        <!-- Batch: súvisiace -->
+                        <button
+                            @click="startBatchRelated"
+                            :disabled="batch.running || batchVariants.running || batchRelated.running"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 disabled:opacity-60 transition-colors whitespace-nowrap"
+                        >
+                            <svg v-if="batchRelated.running" class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                            </svg>
+                            <svg v-else class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                            </svg>
+                            <span v-if="batchRelated.running">{{ batchRelated.done }}&nbsp;/&nbsp;{{ batchRelated.total }}</span>
+                            <span v-else>AI: súvisiace</span>
                         </button>
                     </div>
 
@@ -222,12 +258,22 @@
                         class="group relative flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer"
                         @click="openModal(product)"
                     >
-                        <!-- Filter status dot -->
-                        <div class="absolute top-2 right-2 z-10">
+                        <!-- Filter status dot + variant/related badges -->
+                        <div class="absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
                             <div class="h-2.5 w-2.5 rounded-full shadow-sm"
                                  :class="hasFilters(product.product_id) ? 'bg-green-400' : 'bg-gray-300'"
                                  :title="hasFilters(product.product_id) ? 'Má priradené filtre' : 'Bez filtrov'">
                             </div>
+                            <span v-if="product.variant_count > 0"
+                                  class="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-semibold text-blue-700 leading-none"
+                                  :title="`${product.variant_count} variantov`">
+                                V{{ product.variant_count }}
+                            </span>
+                            <span v-if="product.related_count > 0"
+                                  class="inline-flex items-center rounded-full bg-teal-100 px-1.5 py-0.5 text-xs font-semibold text-teal-700 leading-none"
+                                  :title="`${product.related_count} súvisiacich`">
+                                S{{ product.related_count }}
+                            </span>
                         </div>
 
                         <!-- Image -->
@@ -250,10 +296,17 @@
                         </div>
 
                         <!-- Hover overlay -->
-                        <div class="absolute inset-0 flex items-center justify-center bg-indigo-600 bg-opacity-0 group-hover:bg-opacity-5 transition-all">
+                        <div class="absolute inset-0 flex items-center justify-center gap-2 bg-indigo-600 bg-opacity-0 group-hover:bg-opacity-5 transition-all">
                             <span class="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white shadow">
                                 Upraviť priradenia
                             </span>
+                            <Link
+                                :href="route('products.show', product.product_id)"
+                                @click.stop
+                                class="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-teal-600 px-3 py-1 text-xs font-medium text-white shadow"
+                            >
+                                Detail
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -394,6 +447,191 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
                                 Potvrdiť a uložiť ({{ reviewActiveItems.length }} produktov)
+                            </button>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+        </Transition>
+
+        <!-- ══ Review modal — Varianty ══════════════════════════════════════ -->
+        <Transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="reviewVariants.open"
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+                 @click.self="reviewVariants.open = false">
+                <Transition
+                    enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0 scale-95"
+                    enter-to-class="opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-150"
+                    leave-from-class="opacity-100 scale-100"
+                    leave-to-class="opacity-0 scale-95"
+                >
+                    <div v-if="reviewVariants.open"
+                         class="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl flex flex-col"
+                         style="max-height: 88vh">
+                        <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 flex-shrink-0">
+                            <div>
+                                <h2 class="text-base font-semibold text-gray-800">Navrhnuté varianty</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    Skontroluj skupiny variantov a ulož tie, ktoré sú správne
+                                </p>
+                            </div>
+                            <button @click="reviewVariants.open = false" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto divide-y divide-gray-50 px-6 py-2">
+                            <div v-for="(item, itemIdx) in reviewVariants.items" :key="itemIdx"
+                                 class="py-3 transition-opacity"
+                                 :class="item.skip ? 'opacity-30' : ''">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Skupina</p>
+                                    <button @click="item.skip = !item.skip"
+                                            class="text-xs font-medium rounded-md px-2 py-0.5 transition-colors"
+                                            :class="item.skip ? 'bg-gray-100 text-gray-400 hover:bg-gray-200' : 'text-gray-300 hover:text-red-400 hover:bg-red-50'">
+                                        {{ item.skip ? 'Obnoviť' : 'Preskočiť' }}
+                                    </button>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <div v-for="(product, pIdx) in item.group" :key="product.product_id"
+                                         class="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5">
+                                        <img v-if="product.image" :src="product.image" class="h-8 w-8 object-contain rounded" @error="$event.target.style.display='none'" />
+                                        <span class="text-xs font-medium text-blue-800">{{ product.name }}</span>
+                                        <button @click="item.group.splice(pIdx, 1)"
+                                                class="text-blue-300 hover:text-red-400 transition-colors">
+                                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="reviewVariants.items.length === 0" class="py-12 text-center text-gray-300 text-sm">
+                                Nenašli sa žiadne skupiny variantov
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 flex-shrink-0">
+                            <button @click="reviewVariants.open = false"
+                                    class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                                Zrušiť
+                            </button>
+                            <button @click="confirmVariants"
+                                    :disabled="reviewVariants.saving"
+                                    class="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                <svg v-if="reviewVariants.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                </svg>
+                                <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Uložiť varianty ({{ reviewVariants.items.filter(i => !i.skip && i.group.length >= 2).length }} skupín)
+                            </button>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+        </Transition>
+
+        <!-- ══ Review modal — Súvisiace ══════════════════════════════════════ -->
+        <Transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="reviewRelated.open"
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+                 @click.self="reviewRelated.open = false">
+                <Transition
+                    enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0 scale-95"
+                    enter-to-class="opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-150"
+                    leave-from-class="opacity-100 scale-100"
+                    leave-to-class="opacity-0 scale-95"
+                >
+                    <div v-if="reviewRelated.open"
+                         class="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl flex flex-col"
+                         style="max-height: 88vh">
+                        <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 flex-shrink-0">
+                            <div>
+                                <h2 class="text-base font-semibold text-gray-800">Navrhnuté súvisiace produkty</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    Skontroluj návrhy a ulož len relevantné
+                                </p>
+                            </div>
+                            <button @click="reviewRelated.open = false" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto divide-y divide-gray-50 px-6 py-2">
+                            <div v-for="(item, itemIdx) in reviewRelated.items" :key="item.product.product_id"
+                                 class="py-3 transition-opacity"
+                                 :class="item.skip || item.related.length === 0 ? 'opacity-30' : ''">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <img v-if="item.product.image" :src="item.product.image" class="h-7 w-7 object-contain rounded" @error="$event.target.style.display='none'" />
+                                        <p class="text-xs font-semibold text-gray-700 truncate">{{ item.product.name }}</p>
+                                    </div>
+                                    <button @click="item.skip = !item.skip"
+                                            class="text-xs font-medium rounded-md px-2 py-0.5 transition-colors flex-shrink-0"
+                                            :class="item.skip ? 'bg-gray-100 text-gray-400 hover:bg-gray-200' : 'text-gray-300 hover:text-red-400 hover:bg-red-50'">
+                                        {{ item.skip ? 'Obnoviť' : 'Preskočiť' }}
+                                    </button>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <span v-for="(rel, rIdx) in item.related" :key="rel.product_id"
+                                          class="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700 border border-teal-100">
+                                        {{ rel.name }}
+                                        <button @click="item.related.splice(rIdx, 1)"
+                                                class="text-teal-300 hover:text-red-400 transition-colors">
+                                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </span>
+                                    <p v-if="item.related.length === 0" class="text-xs text-gray-300 italic">všetky odstránené</p>
+                                </div>
+                            </div>
+                            <div v-if="reviewRelated.items.length === 0" class="py-12 text-center text-gray-300 text-sm">
+                                Nenašli sa žiadne súvisiace produkty
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 flex-shrink-0">
+                            <button @click="reviewRelated.open = false"
+                                    class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                                Zrušiť
+                            </button>
+                            <button @click="confirmRelated"
+                                    :disabled="reviewRelated.saving"
+                                    class="inline-flex items-center gap-2 rounded-md bg-teal-600 px-5 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50 transition-colors">
+                                <svg v-if="reviewRelated.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                </svg>
+                                <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Uložiť ({{ reviewRelated.items.filter(i => !i.skip && i.related.length > 0).length }} produktov)
                             </button>
                         </div>
                     </div>
@@ -870,7 +1108,13 @@ const unassignedCount = computed(
 
 // ─── Batch AI assignment ──────────────────────────────────────────────────────
 
-const batch = ref({ running: false, total: 0, done: 0 });
+const batch         = ref({ running: false, total: 0, done: 0 });
+const batchVariants = ref({ running: false, total: 0, done: 0 });
+const batchRelated  = ref({ running: false, total: 0, done: 0 });
+
+// Review modals for variants and related
+const reviewVariants = ref({ open: false, items: [], saving: false });
+const reviewRelated  = ref({ open: false, items: [], saving: false });
 
 // Review modal — shown after batch finishes, before anything is saved
 const review = ref({ open: false, items: [], saving: false });
@@ -967,6 +1211,111 @@ async function confirmReview() {
     review.value.saving = false;
     review.value.open   = false;
     showToast(`Uložené — ${saved} produktom priradené filtre`);
+}
+
+// ─── Batch: varianty ─────────────────────────────────────────────────────────
+
+async function startBatchVariants() {
+    const targets = props.products;
+    if (targets.length === 0) return;
+
+    batchVariants.value = { running: true, total: targets.length, done: 0 };
+    // key = JSON string of sorted product IDs to deduplicate groups across products
+    const seenGroupKeys = new Set();
+    const collected = [];
+
+    for (const product of targets) {
+        try {
+            const res = await axios.post(route('products.batch-suggest-variants'), { product_id: product.product_id });
+            const groups = res.data.groups ?? [];
+            for (const group of groups) {
+                if (group.length < 2) continue;
+                const key = [...group.map(p => p.product_id)].sort((a, b) => a - b).join(',');
+                if (!seenGroupKeys.has(key)) {
+                    seenGroupKeys.add(key);
+                    collected.push({ group: [...group], skip: false });
+                }
+            }
+        } catch { /* skip */ }
+        batchVariants.value.done++;
+    }
+
+    batchVariants.value.running = false;
+
+    if (collected.length === 0) {
+        showToast('Nenašli sa žiadne skupiny variantov');
+        return;
+    }
+
+    reviewVariants.value = { open: true, items: collected, saving: false };
+}
+
+async function confirmVariants() {
+    reviewVariants.value.saving = true;
+    let saved = 0;
+
+    for (const item of reviewVariants.value.items) {
+        if (item.skip || item.group.length < 2) continue;
+        try {
+            const masterProduct = item.group[0];
+            const variantIds = item.group.slice(1).map(p => p.product_id);
+            await axios.post(route('products.save-variants', masterProduct.product_id), { variant_ids: variantIds });
+            saved++;
+        } catch { /* skip */ }
+    }
+
+    reviewVariants.value.saving = false;
+    reviewVariants.value.open   = false;
+    showToast(`Uložené — ${saved} skupín variantov`);
+}
+
+// ─── Batch: súvisiace ─────────────────────────────────────────────────────────
+
+async function startBatchRelated() {
+    const targets = props.products;
+    if (targets.length === 0) return;
+
+    batchRelated.value = { running: true, total: targets.length, done: 0 };
+    const collected = [];
+
+    for (const product of targets) {
+        try {
+            const res = await axios.post(route('products.batch-suggest-related'), { product_id: product.product_id });
+            const related = res.data.related ?? [];
+            if (related.length > 0) {
+                collected.push({ product, related: [...related], skip: false });
+            }
+        } catch { /* skip */ }
+        batchRelated.value.done++;
+    }
+
+    batchRelated.value.running = false;
+
+    if (collected.length === 0) {
+        showToast('Nenašli sa žiadne súvisiace produkty');
+        return;
+    }
+
+    reviewRelated.value = { open: true, items: collected, saving: false };
+}
+
+async function confirmRelated() {
+    reviewRelated.value.saving = true;
+    let saved = 0;
+
+    for (const item of reviewRelated.value.items) {
+        if (item.skip || item.related.length === 0) continue;
+        try {
+            await axios.post(route('products.save-related', item.product.product_id), {
+                related_ids: item.related.map(r => r.product_id),
+            });
+            saved++;
+        } catch { /* skip */ }
+    }
+
+    reviewRelated.value.saving = false;
+    reviewRelated.value.open   = false;
+    showToast(`Uložené — ${saved} produktom priradené súvisiace produkty`);
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────

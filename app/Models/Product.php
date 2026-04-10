@@ -35,4 +35,14 @@ class Product extends Model
     {
         return $this->belongsToMany(Filter::class, 'titi_product_filter', 'product_id', 'filter_id');
     }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class, 'product_id', 'product_id');
+    }
+
+    public function related(): HasMany
+    {
+        return $this->hasMany(ProductRelated::class, 'product_id', 'product_id');
+    }
 }

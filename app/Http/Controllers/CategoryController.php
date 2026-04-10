@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Traits\ProductSimilarityTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,7 @@ use Inertia\Inertia;
 
 class CategoryController extends Controller
 {
+    use ProductSimilarityTrait;
     // Slovak color adjective forms → filter value (feminine noun form)
     private const COLOR_MAP = [
         'čierny' => 'čierna', 'čierna' => 'čierna', 'čierne' => 'čierna', 'čiernej' => 'čierna',
@@ -134,8 +136,24 @@ class CategoryController extends Controller
             ->flip()           // convert to [id => index] for O(1) lookup
             ->all();
 
+        $variantCounts = DB::connection('titi')
+            ->table('titi_product_variant')
+            ->whereIn('product_id', $productIds)
+            ->select('product_id', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('product_id')
+            ->pluck('cnt', 'product_id');
+
+        $relatedCounts = DB::connection('titi')
+            ->table('titi_product_related')
+            ->whereIn('product_id', $productIds)
+            ->select('product_id', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('product_id')
+            ->pluck('cnt', 'product_id');
+
         $products = $products->map(fn($p) => array_merge($p, [
-            'has_filters' => array_key_exists($p['product_id'], $withFiltersIds),
+            'has_filters'   => array_key_exists($p['product_id'], $withFiltersIds),
+            'variant_count' => (int) ($variantCounts[$p['product_id']] ?? 0),
+            'related_count' => (int) ($relatedCounts[$p['product_id']] ?? 0),
         ]));
 
         return Inertia::render('Categories/Show', [
@@ -509,27 +527,6 @@ class CategoryController extends Controller
         }
 
         return $suggestions;
-    }
-
-    // ─── Tokenize product name for similarity comparison ────────────────────
-
-    private function tokenizeName(string $name): array
-    {
-        $name   = mb_strtolower(trim($name));
-        $tokens = preg_split('/[\s\/,;.()\[\]{}]+/', $name, -1, PREG_SPLIT_NO_EMPTY);
-        // Keep tokens with 2+ characters (drop "a", "s", "v", etc.)
-        return array_values(array_filter($tokens, fn($t) => mb_strlen($t) >= 2));
-    }
-
-    // ─── Jaccard similarity between two token arrays ────────────────────────
-
-    private function jaccardSimilarity(array $a, array $b): float
-    {
-        $setA = array_unique($a);
-        $setB = array_unique($b);
-        $intersection = count(array_intersect($setA, $setB));
-        $union        = count(array_unique(array_merge($setA, $setB)));
-        return $union > 0 ? $intersection / $union : 0.0;
     }
 
     // ─── Extract color adjective from product name (rightmost match) ────────
