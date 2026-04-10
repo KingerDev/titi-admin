@@ -264,15 +264,15 @@
                                  :class="hasFilters(product.product_id) ? 'bg-green-400' : 'bg-gray-300'"
                                  :title="hasFilters(product.product_id) ? 'Má priradené filtre' : 'Bez filtrov'">
                             </div>
-                            <span v-if="product.variant_count > 0"
+                            <span v-if="(variantCounts[product.product_id] ?? 0) > 0"
                                   class="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-semibold text-blue-700 leading-none"
-                                  :title="`${product.variant_count} variantov`">
-                                V{{ product.variant_count }}
+                                  :title="`${variantCounts[product.product_id]} variantov`">
+                                V{{ variantCounts[product.product_id] }}
                             </span>
-                            <span v-if="product.related_count > 0"
+                            <span v-if="(relatedCounts[product.product_id] ?? 0) > 0"
                                   class="inline-flex items-center rounded-full bg-teal-100 px-1.5 py-0.5 text-xs font-semibold text-teal-700 leading-none"
-                                  :title="`${product.related_count} súvisiacich`">
-                                S{{ product.related_count }}
+                                  :title="`${relatedCounts[product.product_id]} súvisiacich`">
+                                S{{ relatedCounts[product.product_id] }}
                             </span>
                         </div>
 
@@ -298,15 +298,14 @@
                         <!-- Hover overlay -->
                         <div class="absolute inset-0 flex items-center justify-center gap-2 bg-indigo-600 bg-opacity-0 group-hover:bg-opacity-5 transition-all">
                             <span class="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white shadow">
-                                Upraviť priradenia
+                                Filtre &amp; Kategórie
                             </span>
-                            <Link
-                                :href="route('products.show', product.product_id)"
-                                @click.stop
-                                class="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-teal-600 px-3 py-1 text-xs font-medium text-white shadow"
+                            <button
+                                @click.stop="openVariantsModal(product, $event)"
+                                class="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-blue-600 px-3 py-1 text-xs font-medium text-white shadow"
                             >
-                                Detail
-                            </Link>
+                                Varianty &amp; Súvisiace
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -661,7 +660,7 @@
                     leave-to-class="opacity-0 scale-95"
                 >
                     <div v-if="modal.open"
-                         class="relative w-full max-w-lg rounded-xl bg-white shadow-2xl flex flex-col"
+                         class="relative w-full max-w-xl rounded-xl bg-white shadow-2xl flex flex-col"
                          style="max-height: 90vh">
 
                         <!-- Header -->
@@ -718,21 +717,22 @@
                             </div>
 
                             <!-- Tabs -->
-                            <div class="flex border-b border-gray-100 flex-shrink-0">
+                            <div class="flex border-b border-gray-100 flex-shrink-0 overflow-x-auto">
                                 <button
                                     v-for="tab in tabs"
                                     :key="tab.key"
                                     @click="activeTab = tab.key"
-                                    class="flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px"
+                                    class="flex-1 min-w-0 px-3 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap"
                                     :class="activeTab === tab.key
-                                        ? 'border-indigo-500 text-indigo-600'
+                                        ? (tab.key === 'variants' ? 'border-blue-500 text-blue-600' : tab.key === 'related' ? 'border-teal-500 text-teal-600' : 'border-indigo-500 text-indigo-600')
                                         : 'border-transparent text-gray-500 hover:text-gray-700'"
                                 >
                                     {{ tab.label }}
-                                    <span v-if="tab.key !== 'description'"
-                                          class="ml-1.5 rounded-full px-1.5 text-xs"
-                                          :class="activeTab === tab.key ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'">
-                                        {{ tab.key === 'categories' ? modal.assignedCategories.length : modal.assignedFilters.length }}
+                                    <span class="ml-1 rounded-full px-1.5 text-xs"
+                                          :class="activeTab === tab.key
+                                            ? (tab.key === 'variants' ? 'bg-blue-100 text-blue-600' : tab.key === 'related' ? 'bg-teal-100 text-teal-600' : 'bg-indigo-100 text-indigo-600')
+                                            : 'bg-gray-100 text-gray-500'">
+                                        {{ tabCount(tab.key) }}
                                     </span>
                                 </button>
                             </div>
@@ -1054,20 +1054,211 @@
                             </div>
 
 
+                            <!-- ── Tab: Varianty ── -->
+                            <div v-show="activeTab === 'variants'" class="flex flex-col overflow-hidden flex-1">
+
+                                <!-- AI suggest row -->
+                                <div class="flex-shrink-0 border-b border-gray-100 px-5 py-3 flex items-center justify-between gap-3">
+                                    <span class="text-xs text-gray-400">Rovnaký produkt, iná farba / veľkosť</span>
+                                    <button @click="suggestModalVariants" :disabled="modal.suggestingVariants"
+                                            class="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 transition-colors whitespace-nowrap flex-shrink-0">
+                                        <svg v-if="modal.suggestingVariants" class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                        </svg>
+                                        <svg v-else class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                        </svg>
+                                        {{ modal.suggestingVariants ? 'AI analyzuje...' : 'AI navrhnúť' }}
+                                    </button>
+                                </div>
+
+                                <!-- AI suggestions -->
+                                <div v-if="modal.variantSuggestions.length > 0" class="flex-shrink-0 border-b border-amber-100 bg-amber-50 px-5 py-3">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <p class="text-xs font-semibold text-amber-700">AI navrhuje ({{ modal.variantSuggestions.filter(p => p.selected).length }} zaškrtnutých)</p>
+                                        <div class="flex items-center gap-2">
+                                            <button @click="saveModalVariantSuggestions" :disabled="modal.savingVariants"
+                                                    class="text-xs font-medium text-amber-700 hover:text-amber-900 underline disabled:opacity-50 transition-colors">
+                                                Uložiť zaškrtnuté
+                                            </button>
+                                            <button @click="modal.variantSuggestions = []" class="text-amber-400 hover:text-amber-600 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <label v-for="p in modal.variantSuggestions" :key="p.product_id"
+                                               class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-800 cursor-pointer hover:bg-amber-50 transition-colors">
+                                            <input type="checkbox" v-model="p.selected" class="h-3 w-3 rounded text-blue-600 flex-shrink-0" />
+                                            {{ p.name }}
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Manual picker -->
+                                <div class="flex-shrink-0 border-b border-gray-100 px-5 pt-3 pb-2">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="relative flex-1">
+                                            <svg class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+                                            </svg>
+                                            <input v-model="modal.variantSearch" type="text" placeholder="Hľadaj v kategórii..."
+                                                   class="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-3 text-xs focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                                        </div>
+                                        <button @click="addManualVariants"
+                                                :disabled="modal.selectedVariantIds.length === 0 || modal.savingVariants"
+                                                class="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-40 transition-colors whitespace-nowrap flex-shrink-0">
+                                            <svg v-if="modal.savingVariants" class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                                            Pridať ({{ modal.selectedVariantIds.length }})
+                                        </button>
+                                    </div>
+                                    <div class="max-h-36 overflow-y-auto -mx-1 px-1 space-y-0.5">
+                                        <label v-for="p in variantPickerProducts" :key="p.product_id"
+                                               class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <input type="checkbox"
+                                                   :checked="modal.selectedVariantIds.includes(p.product_id)"
+                                                   @change="toggleVariantSelection(p.product_id)"
+                                                   class="h-3.5 w-3.5 rounded text-blue-600 flex-shrink-0" />
+                                            <img v-if="p.image" :src="p.image" class="h-7 w-7 object-contain rounded flex-shrink-0" @error="$event.target.style.display='none'" />
+                                            <span class="text-xs text-gray-700 truncate">{{ p.name }}</span>
+                                        </label>
+                                        <p v-if="variantPickerProducts.length === 0" class="text-xs text-gray-300 italic text-center py-3">
+                                            {{ modal.variantSearch ? 'Žiadne zhody' : 'Žiadne ďalšie produkty v kategórii' }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Assigned variants -->
+                                <div class="flex-1 overflow-y-auto px-5 py-3">
+                                    <div v-if="modal.assignedVariants.length === 0" class="flex flex-col items-center justify-center py-8 text-gray-300">
+                                        <svg class="h-8 w-8 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                        <p class="text-sm">Žiadne varianty</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <div v-for="v in modal.assignedVariants" :key="v.product_id"
+                                             class="flex items-center gap-2.5 rounded-md px-2 py-1.5 group hover:bg-gray-50 transition-colors">
+                                            <img v-if="v.image" :src="v.image" class="h-8 w-8 object-contain rounded flex-shrink-0" @error="$event.target.style.display='none'" />
+                                            <span class="flex-1 text-xs text-gray-700 truncate">{{ v.name }}</span>
+                                            <button @click="removeModalVariant(v.product_id)"
+                                                    class="flex-shrink-0 opacity-0 group-hover:opacity-100 rounded-full p-0.5 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ── Tab: Súvisiace ── -->
+                            <div v-show="activeTab === 'related'" class="flex flex-col overflow-hidden flex-1">
+
+                                <!-- AI suggest row -->
+                                <div class="flex-shrink-0 border-b border-gray-100 px-5 py-3 flex items-center justify-between gap-3">
+                                    <span class="text-xs text-gray-400">Komplementárne produkty (príslušenstvo, doplnky)</span>
+                                    <button @click="suggestModalRelated" :disabled="modal.suggestingRelated"
+                                            class="inline-flex items-center gap-1.5 rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 disabled:opacity-60 transition-colors whitespace-nowrap flex-shrink-0">
+                                        <svg v-if="modal.suggestingRelated" class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                        </svg>
+                                        <svg v-else class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                        </svg>
+                                        {{ modal.suggestingRelated ? 'AI analyzuje...' : 'AI navrhnúť' }}
+                                    </button>
+                                </div>
+
+                                <!-- AI suggestions -->
+                                <div v-if="modal.relatedSuggestions.length > 0" class="flex-shrink-0 border-b border-teal-100 bg-teal-50 px-5 py-3">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <p class="text-xs font-semibold text-teal-700">AI navrhuje ({{ modal.relatedSuggestions.filter(p => p.selected).length }} zaškrtnutých)</p>
+                                        <div class="flex items-center gap-2">
+                                            <button @click="saveModalRelatedSuggestions" :disabled="modal.savingRelated"
+                                                    class="text-xs font-medium text-teal-700 hover:text-teal-900 underline disabled:opacity-50 transition-colors">
+                                                Uložiť zaškrtnuté
+                                            </button>
+                                            <button @click="modal.relatedSuggestions = []" class="text-teal-400 hover:text-teal-600 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <label v-for="p in modal.relatedSuggestions" :key="p.product_id"
+                                               class="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-white px-2.5 py-1 text-xs font-medium text-teal-800 cursor-pointer hover:bg-teal-50 transition-colors">
+                                            <input type="checkbox" v-model="p.selected" class="h-3 w-3 rounded text-teal-600 flex-shrink-0" />
+                                            {{ p.name }}
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Manual picker -->
+                                <div class="flex-shrink-0 border-b border-gray-100 px-5 pt-3 pb-2">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="relative flex-1">
+                                            <svg class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+                                            </svg>
+                                            <input v-model="modal.relatedSearch" type="text" placeholder="Hľadaj v kategórii..."
+                                                   class="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-3 text-xs focus:border-teal-400 focus:outline-none focus:ring-1 focus:ring-teal-400" />
+                                        </div>
+                                        <button @click="addManualRelated"
+                                                :disabled="modal.selectedRelatedIds.length === 0 || modal.savingRelated"
+                                                class="inline-flex items-center gap-1 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-40 transition-colors whitespace-nowrap flex-shrink-0">
+                                            <svg v-if="modal.savingRelated" class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                                            Pridať ({{ modal.selectedRelatedIds.length }})
+                                        </button>
+                                    </div>
+                                    <div class="max-h-36 overflow-y-auto -mx-1 px-1 space-y-0.5">
+                                        <label v-for="p in relatedPickerProducts" :key="p.product_id"
+                                               class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <input type="checkbox"
+                                                   :checked="modal.selectedRelatedIds.includes(p.product_id)"
+                                                   @change="toggleRelatedSelection(p.product_id)"
+                                                   class="h-3.5 w-3.5 rounded text-teal-600 flex-shrink-0" />
+                                            <img v-if="p.image" :src="p.image" class="h-7 w-7 object-contain rounded flex-shrink-0" @error="$event.target.style.display='none'" />
+                                            <span class="text-xs text-gray-700 truncate">{{ p.name }}</span>
+                                        </label>
+                                        <p v-if="relatedPickerProducts.length === 0" class="text-xs text-gray-300 italic text-center py-3">
+                                            {{ modal.relatedSearch ? 'Žiadne zhody' : 'Žiadne ďalšie produkty v kategórii' }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Assigned related -->
+                                <div class="flex-1 overflow-y-auto px-5 py-3">
+                                    <div v-if="modal.assignedRelated.length === 0" class="flex flex-col items-center justify-center py-8 text-gray-300">
+                                        <svg class="h-8 w-8 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                        <p class="text-sm">Žiadne súvisiace produkty</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <div v-for="r in modal.assignedRelated" :key="r.product_id"
+                                             class="flex items-center gap-2.5 rounded-md px-2 py-1.5 group hover:bg-gray-50 transition-colors">
+                                            <img v-if="r.image" :src="r.image" class="h-8 w-8 object-contain rounded flex-shrink-0" @error="$event.target.style.display='none'" />
+                                            <span class="flex-1 text-xs text-gray-700 truncate">{{ r.name }}</span>
+                                            <button @click="removeModalRelated(r.product_id)"
+                                                    class="flex-shrink-0 opacity-0 group-hover:opacity-100 rounded-full p-0.5 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Footer -->
                             <div class="flex items-center justify-end gap-3 border-t border-gray-100 px-5 py-4 flex-shrink-0">
                                 <button @click="closeModal"
                                         class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
-                                    Zrušiť
+                                    Zavrieť
                                 </button>
-                                <button @click="saveAll"
+                                <button v-if="activeTab === 'filters' || activeTab === 'categories'"
+                                        @click="saveAll"
                                         :disabled="modal.saving"
                                         class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
                                     <svg v-if="modal.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                                     </svg>
-                                    Uložiť
+                                    Uložiť filtre &amp; kategórie
                                 </button>
                             </div>
                         </template>
@@ -1321,11 +1512,21 @@ async function confirmRelated() {
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const tabs = [
-    { key: 'filters',     label: 'Filtre' },
-    { key: 'categories',  label: 'Kategórie' },
+    { key: 'filters',    label: 'Filtre' },
+    { key: 'categories', label: 'Kategórie' },
+    { key: 'variants',   label: 'Varianty' },
+    { key: 'related',    label: 'Súvisiace' },
 ];
 const activeTab = ref('filters');
 const descExpanded = ref(true);
+
+function tabCount(key) {
+    if (key === 'filters')    return modal.value.assignedFilters.length;
+    if (key === 'categories') return modal.value.assignedCategories.length;
+    if (key === 'variants')   return modal.value.assignedVariants.length;
+    if (key === 'related')    return modal.value.assignedRelated.length;
+    return 0;
+}
 
 // ─── Product search & filter bar ─────────────────────────────────────────────
 
@@ -1504,13 +1705,36 @@ const modal = ref({
     saving: false,
     assignedCategories: [],
     assignedFilters: [],
+    // Variants
+    assignedVariants: [],
+    suggestingVariants: false,
+    variantSuggestions: [],   // [{product_id, name, image, selected}]
+    savingVariants: false,
+    variantSearch: '',
+    selectedVariantIds: [],   // manually selected from category
+    // Related
+    assignedRelated: [],
+    suggestingRelated: false,
+    relatedSuggestions: [],
+    savingRelated: false,
+    relatedSearch: '',
+    selectedRelatedIds: [],
 });
 
-async function openModal(product) {
-    modal.value = { open: true, product, loading: true, saving: false, suggesting: false, assignedCategories: [], assignedFilters: [] };
+// Reactive badge counts (updated when user adds/removes from modal)
+const variantCounts = ref(Object.fromEntries(props.products.map(p => [p.product_id, p.variant_count ?? 0])));
+const relatedCounts  = ref(Object.fromEntries(props.products.map(p => [p.product_id, p.related_count ?? 0])));
+
+async function openModal(product, initialTab = 'filters') {
+    modal.value = {
+        open: true, product, loading: true, saving: false, suggesting: false,
+        assignedCategories: [], assignedFilters: [],
+        assignedVariants: [], suggestingVariants: false, variantSuggestions: [], savingVariants: false, variantSearch: '', selectedVariantIds: [],
+        assignedRelated: [],  suggestingRelated: false,  relatedSuggestions: [],  savingRelated: false,  relatedSearch: '',  selectedRelatedIds: [],
+    };
     aiSuggestions.value = [];
     aiNewFilters.value  = [];
-    activeTab.value = 'filters';
+    activeTab.value = initialTab;
     catQuery.value = '';
     filterQuery.value = '';
     groupQuery.value = '';
@@ -1520,17 +1744,26 @@ async function openModal(product) {
     showGroupMenu.value = false;
 
     try {
-        const [catRes, filterRes] = await Promise.all([
+        const [catRes, filterRes, variantRes, relatedRes] = await Promise.all([
             axios.get(route('products.categories', product.product_id)),
             axios.get(route('products.filters', product.product_id)),
+            axios.get(route('products.variants', product.product_id)),
+            axios.get(route('products.related', product.product_id)),
         ]);
         modal.value.assignedCategories = catRes.data.map(id => categoryMap.value[id]).filter(Boolean);
         modal.value.assignedFilters    = filterRes.data.map(id => filterMap.value[id]).filter(Boolean);
+        modal.value.assignedVariants   = variantRes.data;
+        modal.value.assignedRelated    = relatedRes.data;
     } catch {
         showToast('Nepodarilo sa načítať dáta produktu', 'error');
     } finally {
         modal.value.loading = false;
     }
+}
+
+function openVariantsModal(product, event) {
+    event?.stopPropagation();
+    openModal(product, 'variants');
 }
 
 function closeModal() {
@@ -1560,6 +1793,201 @@ async function saveAll() {
         showToast('Nepodarilo sa uložiť', 'error');
     } finally {
         modal.value.saving = false;
+    }
+}
+
+// ─── Computed: manual pickers ─────────────────────────────────────────────────
+
+const variantPickerProducts = computed(() => {
+    if (!modal.value.product) return [];
+    const excludeIds = new Set([
+        modal.value.product.product_id,
+        ...modal.value.assignedVariants.map(v => v.product_id),
+    ]);
+    let list = props.products.filter(p => !excludeIds.has(p.product_id));
+    const q = modal.value.variantSearch.trim().toLowerCase();
+    if (q) list = list.filter(p => p.name.toLowerCase().includes(q));
+    return list;
+});
+
+const relatedPickerProducts = computed(() => {
+    if (!modal.value.product) return [];
+    const excludeIds = new Set([
+        modal.value.product.product_id,
+        ...modal.value.assignedRelated.map(r => r.product_id),
+    ]);
+    let list = props.products.filter(p => !excludeIds.has(p.product_id));
+    const q = modal.value.relatedSearch.trim().toLowerCase();
+    if (q) list = list.filter(p => p.name.toLowerCase().includes(q));
+    return list;
+});
+
+// ─── Modal: Varianty functions ────────────────────────────────────────────────
+
+function toggleVariantSelection(productId) {
+    const idx = modal.value.selectedVariantIds.indexOf(productId);
+    if (idx === -1) modal.value.selectedVariantIds.push(productId);
+    else modal.value.selectedVariantIds.splice(idx, 1);
+}
+
+function toggleRelatedSelection(productId) {
+    const idx = modal.value.selectedRelatedIds.indexOf(productId);
+    if (idx === -1) modal.value.selectedRelatedIds.push(productId);
+    else modal.value.selectedRelatedIds.splice(idx, 1);
+}
+
+async function suggestModalVariants() {
+    modal.value.suggestingVariants = true;
+    modal.value.variantSuggestions = [];
+    try {
+        const res = await axios.post(route('products.suggest-variants', modal.value.product.product_id));
+        const groups = res.data.groups ?? [];
+        const seen = new Set([
+            modal.value.product.product_id,
+            ...modal.value.assignedVariants.map(v => v.product_id),
+        ]);
+        const suggestions = [];
+        for (const group of groups) {
+            for (const p of group) {
+                if (!seen.has(p.product_id)) {
+                    seen.add(p.product_id);
+                    suggestions.push({ ...p, selected: true });
+                }
+            }
+        }
+        modal.value.variantSuggestions = suggestions;
+        if (suggestions.length === 0) showToast('AI nenašla žiadne nové varianty', 'error');
+    } catch {
+        showToast('Chyba pri AI návrhu variantov', 'error');
+    } finally {
+        modal.value.suggestingVariants = false;
+    }
+}
+
+async function saveModalVariantSuggestions() {
+    const selected = modal.value.variantSuggestions.filter(p => p.selected);
+    if (!selected.length) return;
+    modal.value.savingVariants = true;
+    try {
+        await axios.post(route('products.save-variants', modal.value.product.product_id), {
+            variant_ids: selected.map(p => p.product_id),
+        });
+        modal.value.assignedVariants.push(...selected.map(({ selected: _, ...p }) => p));
+        modal.value.variantSuggestions = [];
+        variantCounts.value[modal.value.product.product_id] = modal.value.assignedVariants.length;
+        showToast(`${selected.length} variantov uložených`);
+    } catch {
+        showToast('Chyba pri ukladaní variantov', 'error');
+    } finally {
+        modal.value.savingVariants = false;
+    }
+}
+
+async function addManualVariants() {
+    const ids = [...modal.value.selectedVariantIds];
+    if (!ids.length) return;
+    modal.value.savingVariants = true;
+    try {
+        await axios.post(route('products.save-variants', modal.value.product.product_id), { variant_ids: ids });
+        const newItems = props.products
+            .filter(p => ids.includes(p.product_id))
+            .map(p => ({ product_id: p.product_id, name: p.name, image: p.image }));
+        modal.value.assignedVariants.push(...newItems);
+        modal.value.selectedVariantIds = [];
+        variantCounts.value[modal.value.product.product_id] = modal.value.assignedVariants.length;
+        showToast(`${ids.length} variantov pridaných`);
+    } catch {
+        showToast('Chyba pri ukladaní', 'error');
+    } finally {
+        modal.value.savingVariants = false;
+    }
+}
+
+async function removeModalVariant(variantId) {
+    try {
+        await axios.delete(route('products.remove-variant', {
+            productId: modal.value.product.product_id,
+            variantId,
+        }));
+        modal.value.assignedVariants = modal.value.assignedVariants.filter(v => v.product_id !== variantId);
+        variantCounts.value[modal.value.product.product_id] = modal.value.assignedVariants.length;
+    } catch {
+        showToast('Chyba pri odstraňovaní variantu', 'error');
+    }
+}
+
+// ─── Modal: Súvisiace functions ───────────────────────────────────────────────
+
+async function suggestModalRelated() {
+    modal.value.suggestingRelated = true;
+    modal.value.relatedSuggestions = [];
+    try {
+        const res = await axios.post(route('products.suggest-related', modal.value.product.product_id));
+        const related = res.data.related ?? [];
+        const seen = new Set([
+            modal.value.product.product_id,
+            ...modal.value.assignedRelated.map(r => r.product_id),
+        ]);
+        modal.value.relatedSuggestions = related
+            .filter(p => !seen.has(p.product_id))
+            .map(p => ({ ...p, selected: true }));
+        if (!modal.value.relatedSuggestions.length) showToast('AI nenašla žiadne nové súvisiace produkty', 'error');
+    } catch {
+        showToast('Chyba pri AI návrhu súvisiacich', 'error');
+    } finally {
+        modal.value.suggestingRelated = false;
+    }
+}
+
+async function saveModalRelatedSuggestions() {
+    const selected = modal.value.relatedSuggestions.filter(p => p.selected);
+    if (!selected.length) return;
+    modal.value.savingRelated = true;
+    try {
+        await axios.post(route('products.save-related', modal.value.product.product_id), {
+            related_ids: selected.map(p => p.product_id),
+        });
+        modal.value.assignedRelated.push(...selected.map(({ selected: _, ...p }) => p));
+        modal.value.relatedSuggestions = [];
+        relatedCounts.value[modal.value.product.product_id] = modal.value.assignedRelated.length;
+        showToast(`${selected.length} súvisiacich produktov uložených`);
+    } catch {
+        showToast('Chyba pri ukladaní súvisiacich', 'error');
+    } finally {
+        modal.value.savingRelated = false;
+    }
+}
+
+async function addManualRelated() {
+    const ids = [...modal.value.selectedRelatedIds];
+    if (!ids.length) return;
+    modal.value.savingRelated = true;
+    try {
+        await axios.post(route('products.save-related', modal.value.product.product_id), { related_ids: ids });
+        const newItems = props.products
+            .filter(p => ids.includes(p.product_id))
+            .map(p => ({ product_id: p.product_id, name: p.name, image: p.image }));
+        modal.value.assignedRelated.push(...newItems);
+        modal.value.selectedRelatedIds = [];
+        relatedCounts.value[modal.value.product.product_id] = modal.value.assignedRelated.length;
+        showToast(`${ids.length} produktov pridaných`);
+    } catch {
+        showToast('Chyba pri ukladaní', 'error');
+    } finally {
+        modal.value.savingRelated = false;
+    }
+}
+
+async function removeModalRelated(relatedId) {
+    try {
+        await axios.delete(route('products.remove-related', {
+            productId: modal.value.product.product_id,
+            relatedId,
+        }));
+        modal.value.assignedRelated = modal.value.assignedRelated.filter(r => r.product_id !== relatedId);
+        relatedCounts.value[modal.value.product.product_id] = modal.value.assignedRelated.length;
+    } catch {
+        showToast('Chyba pri odstraňovaní súvisiaceho produktu', 'error');
     }
 }
 
