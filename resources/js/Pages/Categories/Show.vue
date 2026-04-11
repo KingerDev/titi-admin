@@ -777,16 +777,9 @@
                                                    placeholder="Hľadaj filter..."
                                                    class="flex-1 bg-transparent outline-none placeholder-gray-400 text-gray-700 text-sm"
                                                    @click.stop />
-                                            <span v-else class="flex-1 text-sm" :class="msfSelectedFilter ? 'text-gray-800 font-medium' : 'text-gray-400'">
-                                                {{ msfSelectedFilter ? msfSelectedFilter.name : (msfSelectedGroup ? 'Vybrať filter...' : 'Najprv vyber skupinu') }}
+                                            <span v-else class="flex-1 text-sm text-gray-400">
+                                                {{ msfSelectedGroup ? 'Vybrať filter...' : 'Najprv vyber skupinu' }}
                                             </span>
-                                            <button v-if="msfSelectedFilter && !msfShowFilterMenu"
-                                                    @click.stop="msfSelectedFilter = null"
-                                                    class="text-gray-300 hover:text-gray-500 transition-colors">
-                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                            </button>
                                         </div>
                                         <div v-if="msfShowFilterMenu"
                                              class="absolute left-0 right-0 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
@@ -794,11 +787,12 @@
                                                 {{ msfFilterQuery ? 'Žiadne zhody' : 'Žiadne filtre v tejto skupine' }}
                                             </div>
                                             <div v-for="f in msfAvailableFilters" :key="f.filter_id"
-                                                 @click="selectMsfFilter(f)"
+                                                 @click="toggleMsfFilter(f)"
                                                  class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-indigo-50 transition-colors"
-                                                 :class="msfSelectedFilter?.filter_id === f.filter_id ? 'bg-indigo-50 font-medium text-indigo-700' : 'text-gray-700'">
-                                                <span class="text-sm truncate">{{ f.name }}</span>
-                                                <svg v-if="msfSelectedFilter?.filter_id === f.filter_id" class="ml-auto h-4 w-4 text-indigo-500 flex-shrink-0"
+                                                 :class="msfPendingFilters.some(p => p.filter_id === f.filter_id) ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'">
+                                                <span class="text-sm truncate font-medium" v-if="msfPendingFilters.some(p => p.filter_id === f.filter_id)">{{ f.name }}</span>
+                                                <span class="text-sm truncate" v-else>{{ f.name }}</span>
+                                                <svg v-if="msfPendingFilters.some(p => p.filter_id === f.filter_id)" class="ml-auto h-4 w-4 text-indigo-500 flex-shrink-0"
                                                      fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                                                 </svg>
@@ -807,11 +801,26 @@
                                     </div>
                                 </div>
 
-                                <!-- Selected filter preview -->
-                                <div v-if="msfSelectedFilter" class="rounded-md bg-indigo-50 border border-indigo-100 px-3 py-2 text-xs text-indigo-700">
-                                    <span class="opacity-60">{{ msfSelectedGroup }}:</span>
-                                    <span class="font-medium ml-1">{{ msfSelectedFilter.name }}</span>
-                                    <span class="ml-2 text-indigo-400">→ priradí sa {{ selectedProductIds.size }} produktom</span>
+                                <!-- Pending filters list -->
+                                <div>
+                                    <p class="text-xs font-medium text-gray-500 mb-1.5">
+                                        Filtre na priradenie
+                                        <span v-if="msfPendingFilters.length > 0" class="ml-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-indigo-700">{{ msfPendingFilters.length }}</span>
+                                    </p>
+                                    <div v-if="msfPendingFilters.length > 0" class="flex flex-wrap gap-1.5">
+                                        <span v-for="(f, fi) in msfPendingFilters" :key="f.filter_id"
+                                              class="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700">
+                                            <span class="opacity-60">{{ f.group_name }}:</span>
+                                            {{ f.name }}
+                                            <button @click="msfPendingFilters.splice(fi, 1)"
+                                                    class="ml-0.5 text-indigo-300 hover:text-red-400 transition-colors">
+                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <p v-else class="text-xs text-gray-400 italic">Klikni na filter v dropdown vyššie pre pridanie</p>
                                 </div>
 
                                 <!-- Progress during save -->
@@ -834,7 +843,7 @@
                                     Zrušiť
                                 </button>
                                 <button @click="confirmMsFiltersManual"
-                                        :disabled="msFilters.saving || !msfSelectedFilter"
+                                        :disabled="msFilters.saving || msfPendingFilters.length === 0"
                                         class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
                                     <svg v-if="msFilters.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -844,6 +853,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                     </svg>
                                     Priradiť všetkým
+                                    <span v-if="msfPendingFilters.length > 0">({{ msfPendingFilters.length }} {{ msfPendingFilters.length === 1 ? 'filter' : msfPendingFilters.length < 5 ? 'filtre' : 'filtrov' }})</span>
                                 </button>
                             </div>
                         </div>
@@ -2847,7 +2857,7 @@ const msfShowFilterMenu  = ref(false);
 const msfFilterQuery     = ref('');
 const msfFilterInputRef  = ref(null);
 const msfFilterWrapRef   = ref(null);
-const msfSelectedFilter  = ref(null);
+const msfPendingFilters  = ref([]);   // [{filter_id, name, group_name, ...}]
 
 const msfAvailableGroups = computed(() => {
     if (!msfGroupQuery.value.trim()) return allGroupNames.value;
@@ -2866,7 +2876,7 @@ const msfAvailableFilters = computed(() => {
 function openMsFilters() {
     msFilters.value = { open: true, tab: 'manual', saving: false, savingProgress: { done: 0, total: 0 } };
     msfSelectedGroup.value = null;
-    msfSelectedFilter.value = null;
+    msfPendingFilters.value = [];
     msfGroupQuery.value = '';
     msfFilterQuery.value = '';
 }
@@ -2882,7 +2892,6 @@ function selectMsfGroup(name) {
     msfSelectedGroup.value = name;
     msfGroupQuery.value = '';
     msfShowGroupMenu.value = false;
-    msfSelectedFilter.value = null;
     msfFilterQuery.value = '';
 }
 
@@ -2894,32 +2903,38 @@ async function openMsfFilterMenu() {
     msfFilterInputRef.value?.focus();
 }
 
-function selectMsfFilter(f) {
-    msfSelectedFilter.value = f;
+function toggleMsfFilter(f) {
+    const idx = msfPendingFilters.value.findIndex(p => p.filter_id === f.filter_id);
+    if (idx === -1) {
+        msfPendingFilters.value.push(f);
+    } else {
+        msfPendingFilters.value.splice(idx, 1);
+    }
+    // keep menu open for multi-pick; reset search query
     msfFilterQuery.value = '';
-    msfShowFilterMenu.value = false;
 }
 
 async function confirmMsFiltersManual() {
-    if (!msfSelectedFilter.value) return;
+    if (msfPendingFilters.value.length === 0) return;
     const targets = [...selectedProducts.value];
-    const filterId = msfSelectedFilter.value.filter_id;
+    const newFilterIds = msfPendingFilters.value.map(f => f.filter_id);
     msFilters.value.saving = true;
     msFilters.value.savingProgress = { done: 0, total: targets.length };
     try {
         for (const product of targets) {
             const res = await axios.get(route('products.filters', product.product_id));
             const existing = res.data ?? [];
-            if (!existing.includes(filterId)) {
-                await axios.post(route('products.sync-filters', product.product_id), {
-                    filter_ids: [...existing, filterId],
-                });
-                hasFiltersSet.value.add(product.product_id);
-            }
+            // Merge existing + new (deduplicated)
+            const merged = [...new Set([...existing, ...newFilterIds])];
+            await axios.post(route('products.sync-filters', product.product_id), {
+                filter_ids: merged,
+            });
+            hasFiltersSet.value.add(product.product_id);
             msFilters.value.savingProgress.done++;
         }
-        showToast(`Filter „${msfSelectedFilter.value.name}" priradený ${targets.length} produktom`);
-        msfSelectedFilter.value = null;
+        const n = msfPendingFilters.value.length;
+        showToast(`${n} ${n === 1 ? 'filter priradený' : n < 5 ? 'filtre priradené' : 'filtrov priradených'} ${targets.length} produktom`);
+        msfPendingFilters.value = [];
         msfSelectedGroup.value = null;
         msFilters.value.open = false;
     } catch {
