@@ -106,10 +106,79 @@ class ProductController extends Controller
         $ids = DB::connection('titi')
             ->table('titi_product_variant')
             ->where('product_id', $productId)
+            ->distinct()
             ->pluck('variant_id')
             ->all();
 
         return response()->json($this->loadProductList($ids));
+    }
+
+    public function getVariantGroups(int $productId)
+    {
+        $variantIds = DB::connection('titi')
+            ->table('titi_product_variant')
+            ->where('product_id', $productId)
+            ->distinct()
+            ->pluck('variant_id')
+            ->map(fn($id) => (int) $id)
+            ->all();
+
+        $allIds = array_values(array_unique(array_merge([$productId], $variantIds)));
+
+        if (count($allIds) < 2) {
+            return response()->json(['groups' => [], 'variants' => []]);
+        }
+
+        $filterRows = DB::connection('titi')
+            ->table('titi_product_filter as pf')
+            ->join('titi_filter_description as fd', function ($j) {
+                $j->on('pf.filter_id', '=', 'fd.filter_id')->where('fd.language_id', 2);
+            })
+            ->join('titi_filter_group_description as fgd', function ($j) {
+                $j->on('fd.filter_group_id', '=', 'fgd.filter_group_id')->where('fgd.language_id', 2);
+            })
+            ->whereIn('pf.product_id', $allIds)
+            ->select('pf.product_id', 'fgd.name as group_name', 'fd.name as filter_name')
+            ->get();
+
+        // product_id → [group_name → first filter_name]
+        $productFilterMap = [];
+        foreach ($filterRows as $row) {
+            $pid = (int) $row->product_id;
+            if (!isset($productFilterMap[$pid][$row->group_name])) {
+                $productFilterMap[$pid][$row->group_name] = $row->filter_name;
+            }
+        }
+
+        $allGroupNames = array_unique($filterRows->pluck('group_name')->all());
+
+        $distinguishingGroups = [];
+        foreach ($allGroupNames as $groupName) {
+            $values = array_filter(
+                array_map(fn($pid) => $productFilterMap[$pid][$groupName] ?? null, $allIds),
+                fn($v) => $v !== null
+            );
+            if (count(array_unique($values)) > 1) {
+                $distinguishingGroups[] = $groupName;
+            }
+        }
+
+        $productList   = $this->loadProductList($allIds);
+        $productIndex  = array_column($productList, null, 'product_id');
+
+        $variants = array_map(function (int $pid) use ($productIndex, $productFilterMap, $distinguishingGroups, $productId) {
+            $info = $productIndex[$pid] ?? ['product_id' => $pid, 'name' => "Produkt #{$pid}", 'image' => null];
+            $filterValues = [];
+            foreach ($distinguishingGroups as $g) {
+                $filterValues[$g] = $productFilterMap[$pid][$g] ?? null;
+            }
+            return array_merge($info, [
+                'is_current'    => $pid === $productId,
+                'filter_values' => $filterValues,
+            ]);
+        }, $allIds);
+
+        return response()->json(['groups' => $distinguishingGroups, 'variants' => $variants]);
     }
 
     public function suggestVariants(int $productId)
@@ -686,6 +755,17 @@ class ProductController extends Controller
     {
         // Build all product IDs in the group (including the target)
         $allIds = array_unique(array_merge([$productId], $variantIds));
+
+        // Expand: include existing variants of any product already in the group,
+        // so adding product 4 to group {1,2,3} merges into one group {1,2,3,4}.
+        $existingVariants = DB::connection('titi')
+            ->table('titi_product_variant')
+            ->whereIn('product_id', $allIds)
+            ->pluck('variant_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $allIds = array_values(array_unique(array_merge($allIds, $existingVariants)));
+
         $rows   = [];
 
         foreach ($allIds as $idA) {

@@ -40,6 +40,7 @@ Route::middleware('admin.auth')->group(function () {
 
     // Variants CRUD
     Route::get('/products/{productId}/variants',                      [ProductController::class, 'getVariants'])->name('products.variants');
+    Route::get('/products/{productId}/variant-groups',                [ProductController::class, 'getVariantGroups'])->name('products.variant-groups');
     Route::post('/products/{productId}/suggest-variants',             [ProductController::class, 'suggestVariants'])->name('products.suggest-variants');
     Route::post('/products/{productId}/save-variants',                [ProductController::class, 'saveVariants'])->name('products.save-variants');
     Route::delete('/products/{productId}/variants/{variantId}',       [ProductController::class, 'removeVariant'])->name('products.remove-variant');

@@ -150,11 +150,14 @@ class CategoryController extends Controller
             ->groupBy('product_id')
             ->pluck('cnt', 'product_id');
 
-        $products = $products->map(fn($p) => array_merge($p, [
-            'has_filters'   => array_key_exists($p['product_id'], $withFiltersIds),
-            'variant_count' => (int) ($variantCounts[$p['product_id']] ?? 0),
-            'related_count' => (int) ($relatedCounts[$p['product_id']] ?? 0),
-        ]));
+        $products = $products
+            ->unique('product_id')
+            ->values()
+            ->map(fn($p) => array_merge($p, [
+                'has_filters'   => array_key_exists($p['product_id'], $withFiltersIds),
+                'variant_count' => (int) ($variantCounts[$p['product_id']] ?? 0),
+                'related_count' => (int) ($relatedCounts[$p['product_id']] ?? 0),
+            ]));
 
         return Inertia::render('Categories/Show', [
             'category'   => ['category_id' => $category->category_id, 'name' => $category->name],

@@ -255,9 +255,20 @@
                     <div
                         v-for="product in filteredProducts"
                         :key="product.product_id"
-                        class="group relative flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer"
+                        :class="['group relative flex flex-col rounded-lg border bg-white overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer',
+                            selectedProductIds.has(product.product_id)
+                                ? 'border-indigo-400 ring-2 ring-indigo-200 hover:border-indigo-400'
+                                : 'border-gray-200 hover:border-indigo-300']"
                         @click="openModal(product)"
                     >
+                        <!-- Multiselect checkbox -->
+                        <input
+                            type="checkbox"
+                            :checked="selectedProductIds.has(product.product_id)"
+                            @click.stop="toggleProductSelect(product.product_id, $event)"
+                            class="absolute top-2 left-2 z-10 h-4 w-4 rounded border-gray-300 text-indigo-600 cursor-pointer shadow-sm accent-indigo-600"
+                        />
+
                         <!-- Filter status dot + variant/related badges -->
                         <div class="absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
                             <div class="h-2.5 w-2.5 rounded-full shadow-sm"
@@ -311,6 +322,58 @@
                 </div>
             </div>
         </div>
+
+        <!-- ══ Floating multiselect action bar ══════════════════════════════ -->
+        <Transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="opacity-0 translate-y-4"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 translate-y-4"
+        >
+            <div v-if="selectedProductIds.size > 0"
+                 class="fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200 bg-white px-4 py-3 shadow-lg">
+                <div class="mx-auto max-w-7xl flex items-center gap-3 flex-wrap">
+                    <span class="flex items-center gap-1.5 text-sm font-medium text-gray-700 flex-shrink-0">
+                        <svg class="h-4 w-4 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        {{ selectedProductIds.size }} {{ selectedProductIds.size === 1 ? 'produkt vybraný' : selectedProductIds.size < 5 ? 'produkty vybrané' : 'produktov vybraných' }}
+                    </span>
+                    <div class="flex items-center gap-2 flex-1 flex-wrap">
+                        <button @click="openMsVariants" :disabled="selectedProductIds.size < 2"
+                                class="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                            </svg>
+                            Varianty
+                        </button>
+                        <button @click="openMsRelated" :disabled="selectedProductIds.size < 2"
+                                class="inline-flex items-center gap-1.5 rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                            </svg>
+                            Súvisiace
+                        </button>
+                        <button @click="openMsFilters"
+                                class="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
+                            </svg>
+                            Filtre
+                        </button>
+                    </div>
+                    <button @click="clearSelection"
+                            class="ml-auto flex-shrink-0 rounded-full p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                            title="Zrušiť výber">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </Transition>
 
         <!-- ══ Review modal (batch AI results) ══════════════════════════════ -->
         <Transition
@@ -447,6 +510,394 @@
                                 </svg>
                                 Potvrdiť a uložiť ({{ reviewActiveItems.length }} produktov)
                             </button>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+        </Transition>
+
+        <!-- ══ Multiselect modal — Varianty ════════════════════════════════ -->
+        <Transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="msVariants.open"
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+                 @click.self="msVariants.open = false">
+                <Transition
+                    enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0 scale-95"
+                    enter-to-class="opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-150"
+                    leave-from-class="opacity-100 scale-100"
+                    leave-to-class="opacity-0 scale-95"
+                >
+                    <div v-if="msVariants.open"
+                         class="relative w-full max-w-lg rounded-xl bg-white shadow-2xl flex flex-col"
+                         style="max-height: 88vh">
+                        <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 flex-shrink-0">
+                            <div>
+                                <h2 class="text-base font-semibold text-gray-800">Nastaviť varianty</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">Vybrané produkty budú prepojené ako varianty navzájom</p>
+                            </div>
+                            <button @click="msVariants.open = false" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+                            <div v-for="(product, pIdx) in msVariants.group" :key="product.product_id"
+                                 class="flex items-center gap-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+                                <img v-if="product.image" :src="product.image" class="h-9 w-9 object-contain rounded flex-shrink-0" @error="$event.target.style.display='none'" />
+                                <div v-else class="h-9 w-9 flex-shrink-0 rounded bg-gray-100 flex items-center justify-center">
+                                    <svg class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                </div>
+                                <span class="flex-1 text-xs font-medium text-blue-800 truncate">{{ product.name }}</span>
+                                <button @click="msVariants.group.splice(pIdx, 1)"
+                                        class="flex-shrink-0 text-blue-300 hover:text-red-400 transition-colors">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <p v-if="msVariants.group.length < 2" class="text-xs text-amber-600 text-center py-2">Potrebné sú aspoň 2 produkty</p>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 flex-shrink-0">
+                            <button @click="msVariants.open = false"
+                                    class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                                Zrušiť
+                            </button>
+                            <button @click="confirmMsVariants"
+                                    :disabled="msVariants.saving || msVariants.group.length < 2"
+                                    class="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                <svg v-if="msVariants.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                </svg>
+                                <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Uložiť varianty ({{ msVariants.group.length }})
+                            </button>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+        </Transition>
+
+        <!-- ══ Multiselect modal — Súvisiace ════════════════════════════════ -->
+        <Transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="msRelated.open"
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+                 @click.self="msRelated.open = false">
+                <Transition
+                    enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0 scale-95"
+                    enter-to-class="opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-150"
+                    leave-from-class="opacity-100 scale-100"
+                    leave-to-class="opacity-0 scale-95"
+                >
+                    <div v-if="msRelated.open"
+                         class="relative w-full max-w-lg rounded-xl bg-white shadow-2xl flex flex-col"
+                         style="max-height: 88vh">
+                        <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 flex-shrink-0">
+                            <div>
+                                <h2 class="text-base font-semibold text-gray-800">Nastaviť súvisiace produkty</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">Všetky vybrané produkty budú navzájom prepojené ako súvisiace</p>
+                            </div>
+                            <button @click="msRelated.open = false" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+                            <div v-for="(product, pIdx) in msRelated.group" :key="product.product_id"
+                                 class="flex items-center gap-3 rounded-lg border border-teal-100 bg-teal-50 px-3 py-2">
+                                <img v-if="product.image" :src="product.image" class="h-9 w-9 object-contain rounded flex-shrink-0" @error="$event.target.style.display='none'" />
+                                <div v-else class="h-9 w-9 flex-shrink-0 rounded bg-gray-100 flex items-center justify-center">
+                                    <svg class="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                </div>
+                                <span class="flex-1 text-xs font-medium text-teal-800 truncate">{{ product.name }}</span>
+                                <button @click="msRelated.group.splice(pIdx, 1)"
+                                        class="flex-shrink-0 text-teal-300 hover:text-red-400 transition-colors">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <p v-if="msRelated.group.length < 2" class="text-xs text-amber-600 text-center py-2">Potrebné sú aspoň 2 produkty</p>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 flex-shrink-0">
+                            <button @click="msRelated.open = false"
+                                    class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                                Zrušiť
+                            </button>
+                            <button @click="confirmMsRelated"
+                                    :disabled="msRelated.saving || msRelated.group.length < 2"
+                                    class="inline-flex items-center gap-2 rounded-md bg-teal-600 px-5 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50 transition-colors">
+                                <svg v-if="msRelated.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                </svg>
+                                <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Uložiť súvisiace ({{ msRelated.group.length }})
+                            </button>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+        </Transition>
+
+        <!-- ══ Multiselect modal — Filtre ════════════════════════════════════ -->
+        <Transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="msFilters.open"
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+                 @click.self="msFilters.open = false">
+                <Transition
+                    enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0 scale-95"
+                    enter-to-class="opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-150"
+                    leave-from-class="opacity-100 scale-100"
+                    leave-to-class="opacity-0 scale-95"
+                >
+                    <div v-if="msFilters.open"
+                         class="relative w-full max-w-lg rounded-xl bg-white shadow-2xl flex flex-col"
+                         style="max-height: 88vh">
+
+                        <!-- Header -->
+                        <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 flex-shrink-0">
+                            <div>
+                                <h2 class="text-base font-semibold text-gray-800">Priradiť filtre</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    {{ selectedProductIds.size }} {{ selectedProductIds.size === 1 ? 'produkt' : selectedProductIds.size < 5 ? 'produkty' : 'produktov' }}
+                                </p>
+                            </div>
+                            <button @click="msFilters.open = false" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div class="flex border-b border-gray-100 flex-shrink-0">
+                            <button @click="msFilters.tab = 'manual'"
+                                    class="flex-1 px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px"
+                                    :class="msFilters.tab === 'manual' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                                Manuálne
+                            </button>
+                            <button @click="msFilters.tab = 'ai'"
+                                    class="flex-1 px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px"
+                                    :class="msFilters.tab === 'ai' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                                AI
+                            </button>
+                        </div>
+
+                        <!-- Tab: Manuálne -->
+                        <div v-if="msFilters.tab === 'manual'" class="flex flex-col overflow-hidden flex-1">
+                            <div class="flex-1 px-6 py-5 space-y-4" ref="msfGroupWrapRef">
+
+                                <!-- Group dropdown -->
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-medium text-gray-500">Skupina filtrov</label>
+                                    <div class="relative">
+                                        <div class="flex w-full cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors"
+                                             :class="msfShowGroupMenu ? 'border-indigo-400 ring-1 ring-indigo-400' : 'border-gray-200 hover:border-gray-300'"
+                                             @click="openMsfGroupMenu">
+                                            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                            </svg>
+                                            <input v-if="msfShowGroupMenu" ref="msfGroupInputRef" v-model="msfGroupQuery" type="text"
+                                                   placeholder="Hľadaj skupinu..."
+                                                   class="flex-1 bg-transparent outline-none placeholder-gray-400 text-gray-700 text-sm"
+                                                   @click.stop />
+                                            <span v-else class="flex-1 text-sm" :class="msfSelectedGroup ? 'text-gray-800 font-medium' : 'text-gray-400'">
+                                                {{ msfSelectedGroup ?? 'Vybrať skupinu...' }}
+                                            </span>
+                                            <button v-if="msfSelectedGroup && !msfShowGroupMenu"
+                                                    @click.stop="msfSelectedGroup = null; msfSelectedFilter = null"
+                                                    class="text-gray-300 hover:text-gray-500 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div v-if="msfShowGroupMenu"
+                                             class="absolute left-0 right-0 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                            <div v-if="msfAvailableGroups.length === 0" class="px-3 py-4 text-sm text-center text-gray-400 italic">Žiadne zhody</div>
+                                            <div v-for="gn in msfAvailableGroups" :key="gn"
+                                                 @click="selectMsfGroup(gn)"
+                                                 class="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-indigo-50 transition-colors"
+                                                 :class="msfSelectedGroup === gn ? 'bg-indigo-50' : ''">
+                                                <span class="text-sm font-medium text-gray-700">{{ gn }}</span>
+                                                <svg v-if="msfSelectedGroup === gn" class="ml-auto h-4 w-4 text-indigo-500 flex-shrink-0"
+                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Filter dropdown -->
+                                <div :class="msfSelectedGroup ? '' : 'opacity-40 pointer-events-none'" ref="msfFilterWrapRef">
+                                    <label class="mb-1.5 block text-xs font-medium text-gray-500">Hodnota filtra</label>
+                                    <div class="relative">
+                                        <div class="flex w-full cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors"
+                                             :class="msfShowFilterMenu ? 'border-indigo-400 ring-1 ring-indigo-400' : 'border-gray-200 hover:border-gray-300'"
+                                             @click="openMsfFilterMenu">
+                                            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
+                                            </svg>
+                                            <input v-if="msfShowFilterMenu" ref="msfFilterInputRef" v-model="msfFilterQuery" type="text"
+                                                   placeholder="Hľadaj filter..."
+                                                   class="flex-1 bg-transparent outline-none placeholder-gray-400 text-gray-700 text-sm"
+                                                   @click.stop />
+                                            <span v-else class="flex-1 text-sm" :class="msfSelectedFilter ? 'text-gray-800 font-medium' : 'text-gray-400'">
+                                                {{ msfSelectedFilter ? msfSelectedFilter.name : (msfSelectedGroup ? 'Vybrať filter...' : 'Najprv vyber skupinu') }}
+                                            </span>
+                                            <button v-if="msfSelectedFilter && !msfShowFilterMenu"
+                                                    @click.stop="msfSelectedFilter = null"
+                                                    class="text-gray-300 hover:text-gray-500 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div v-if="msfShowFilterMenu"
+                                             class="absolute left-0 right-0 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                            <div v-if="msfAvailableFilters.length === 0" class="px-3 py-4 text-sm text-center text-gray-400 italic">
+                                                {{ msfFilterQuery ? 'Žiadne zhody' : 'Žiadne filtre v tejto skupine' }}
+                                            </div>
+                                            <div v-for="f in msfAvailableFilters" :key="f.filter_id"
+                                                 @click="selectMsfFilter(f)"
+                                                 class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-indigo-50 transition-colors"
+                                                 :class="msfSelectedFilter?.filter_id === f.filter_id ? 'bg-indigo-50 font-medium text-indigo-700' : 'text-gray-700'">
+                                                <span class="text-sm truncate">{{ f.name }}</span>
+                                                <svg v-if="msfSelectedFilter?.filter_id === f.filter_id" class="ml-auto h-4 w-4 text-indigo-500 flex-shrink-0"
+                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Selected filter preview -->
+                                <div v-if="msfSelectedFilter" class="rounded-md bg-indigo-50 border border-indigo-100 px-3 py-2 text-xs text-indigo-700">
+                                    <span class="opacity-60">{{ msfSelectedGroup }}:</span>
+                                    <span class="font-medium ml-1">{{ msfSelectedFilter.name }}</span>
+                                    <span class="ml-2 text-indigo-400">→ priradí sa {{ selectedProductIds.size }} produktom</span>
+                                </div>
+
+                                <!-- Progress during save -->
+                                <div v-if="msFilters.saving" class="space-y-1.5">
+                                    <div class="flex items-center justify-between text-xs text-gray-500">
+                                        <span>Priraďujem...</span>
+                                        <span>{{ msFilters.savingProgress.done }} / {{ msFilters.savingProgress.total }}</span>
+                                    </div>
+                                    <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                        <div class="h-full rounded-full bg-indigo-400 transition-all duration-300"
+                                             :style="{ width: (msFilters.savingProgress.total ? (msFilters.savingProgress.done / msFilters.savingProgress.total * 100) : 0) + '%' }">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 flex-shrink-0">
+                                <button @click="msFilters.open = false"
+                                        class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                                    Zrušiť
+                                </button>
+                                <button @click="confirmMsFiltersManual"
+                                        :disabled="msFilters.saving || !msfSelectedFilter"
+                                        class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+                                    <svg v-if="msFilters.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                    </svg>
+                                    <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Priradiť všetkým
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tab: AI -->
+                        <div v-if="msFilters.tab === 'ai'" class="flex flex-col overflow-hidden flex-1">
+                            <div class="flex-1 px-6 py-6 flex flex-col items-center justify-center gap-4 text-center">
+                                <div class="rounded-full bg-indigo-50 p-4">
+                                    <svg class="h-8 w-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700">AI analýza filtrov</p>
+                                    <p class="text-xs text-gray-400 mt-1">
+                                        AI navrhne filtre pre každý z {{ selectedProductIds.size }} vybraných produktov.
+                                        Výsledky skontrolujete pred uložením.
+                                    </p>
+                                </div>
+
+                                <!-- Progress during AI run -->
+                                <div v-if="msFilters.saving" class="w-full space-y-1.5">
+                                    <div class="flex items-center justify-between text-xs text-gray-500">
+                                        <span>Analyzujem produkty...</span>
+                                        <span>{{ msFilters.savingProgress.done }} / {{ msFilters.savingProgress.total }}</span>
+                                    </div>
+                                    <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                        <div class="h-full rounded-full bg-indigo-400 transition-all duration-300"
+                                             :style="{ width: (msFilters.savingProgress.total ? (msFilters.savingProgress.done / msFilters.savingProgress.total * 100) : 0) + '%' }">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 flex-shrink-0">
+                                <button @click="msFilters.open = false"
+                                        class="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                                    Zrušiť
+                                </button>
+                                <button @click="startMsFiltersAI"
+                                        :disabled="msFilters.saving"
+                                        class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+                                    <svg v-if="msFilters.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                    </svg>
+                                    <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                    </svg>
+                                    Spustiť AI analýzu ({{ selectedProductIds.size }})
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </Transition>
@@ -1057,6 +1508,28 @@
                             <!-- ── Tab: Varianty ── -->
                             <div v-show="activeTab === 'variants'" class="flex flex-col overflow-hidden flex-1">
 
+                                <!-- Variant group dropdowns (filter-based preview) -->
+                                <div v-if="modal.variantGroups?.groups?.length > 0"
+                                     class="flex-shrink-0 border-b border-blue-100 bg-blue-50 px-5 py-3 space-y-2">
+                                    <p class="text-[10px] font-semibold uppercase tracking-wide text-blue-400">Skupiny variantov</p>
+                                    <div v-for="groupName in modal.variantGroups.groups" :key="groupName" class="flex items-center gap-2">
+                                        <span class="w-28 flex-shrink-0 text-xs text-blue-600 font-medium truncate">{{ groupName }}:</span>
+                                        <select
+                                            class="flex-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                            @change="e => openModal(modal.variantGroups.variants.find(v => v.product_id === +e.target.value), 'variants')"
+                                        >
+                                            <option
+                                                v-for="v in modal.variantGroups.variants.filter(v => v.filter_values[groupName])"
+                                                :key="v.product_id"
+                                                :value="v.product_id"
+                                                :selected="v.is_current"
+                                            >
+                                                {{ v.filter_values[groupName] }}{{ v.is_current ? ' (tento)' : '' }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <!-- AI suggest row -->
                                 <div class="flex-shrink-0 border-b border-gray-100 px-5 py-3 flex items-center justify-between gap-3">
                                     <span class="text-xs text-gray-400">Rovnaký produkt, iná farba / veľkosť</span>
@@ -1115,13 +1588,15 @@
                                     </div>
                                     <div class="max-h-36 overflow-y-auto -mx-1 px-1 space-y-0.5">
                                         <label v-for="p in variantPickerProducts" :key="p.product_id"
-                                               class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-gray-50 cursor-pointer transition-colors">
+                                               :class="['flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors', p.alreadyAssigned ? 'opacity-60 cursor-default' : 'hover:bg-gray-50 cursor-pointer']">
                                             <input type="checkbox"
-                                                   :checked="modal.selectedVariantIds.includes(p.product_id)"
-                                                   @change="toggleVariantSelection(p.product_id)"
+                                                   :checked="p.alreadyAssigned || modal.selectedVariantIds.includes(p.product_id)"
+                                                   :disabled="p.alreadyAssigned"
+                                                   @change="!p.alreadyAssigned && toggleVariantSelection(p.product_id)"
                                                    class="h-3.5 w-3.5 rounded text-blue-600 flex-shrink-0" />
                                             <img v-if="p.image" :src="p.image" class="h-7 w-7 object-contain rounded flex-shrink-0" @error="$event.target.style.display='none'" />
-                                            <span class="text-xs text-gray-700 truncate">{{ p.name }}</span>
+                                            <span class="text-xs truncate" :class="p.alreadyAssigned ? 'text-gray-400' : 'text-gray-700'">{{ p.name }}</span>
+                                            <span v-if="p.alreadyAssigned" class="ml-auto flex-shrink-0 text-[10px] font-medium text-blue-500 bg-blue-50 rounded px-1">Priradené</span>
                                         </label>
                                         <p v-if="variantPickerProducts.length === 0" class="text-xs text-gray-300 italic text-center py-3">
                                             {{ modal.variantSearch ? 'Žiadne zhody' : 'Žiadne ďalšie produkty v kategórii' }}
@@ -1210,13 +1685,15 @@
                                     </div>
                                     <div class="max-h-36 overflow-y-auto -mx-1 px-1 space-y-0.5">
                                         <label v-for="p in relatedPickerProducts" :key="p.product_id"
-                                               class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-gray-50 cursor-pointer transition-colors">
+                                               :class="['flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors', p.alreadyAssigned ? 'opacity-60 cursor-default' : 'hover:bg-gray-50 cursor-pointer']">
                                             <input type="checkbox"
-                                                   :checked="modal.selectedRelatedIds.includes(p.product_id)"
-                                                   @change="toggleRelatedSelection(p.product_id)"
+                                                   :checked="p.alreadyAssigned || modal.selectedRelatedIds.includes(p.product_id)"
+                                                   :disabled="p.alreadyAssigned"
+                                                   @change="!p.alreadyAssigned && toggleRelatedSelection(p.product_id)"
                                                    class="h-3.5 w-3.5 rounded text-teal-600 flex-shrink-0" />
                                             <img v-if="p.image" :src="p.image" class="h-7 w-7 object-contain rounded flex-shrink-0" @error="$event.target.style.display='none'" />
-                                            <span class="text-xs text-gray-700 truncate">{{ p.name }}</span>
+                                            <span class="text-xs truncate" :class="p.alreadyAssigned ? 'text-gray-400' : 'text-gray-700'">{{ p.name }}</span>
+                                            <span v-if="p.alreadyAssigned" class="ml-auto flex-shrink-0 text-[10px] font-medium text-teal-500 bg-teal-50 rounded px-1">Priradené</span>
                                         </label>
                                         <p v-if="relatedPickerProducts.length === 0" class="text-xs text-gray-300 italic text-center py-3">
                                             {{ modal.relatedSearch ? 'Žiadne zhody' : 'Žiadne ďalšie produkty v kategórii' }}
@@ -1635,7 +2112,13 @@ watch(filterByGroup, (val) => {
 });
 
 const filteredProducts = computed(() => {
-    let list = props.products;
+    // Deduplicate by product_id (safety net against any source of duplicates)
+    const seen = new Set();
+    let list = props.products.filter(p => {
+        if (seen.has(p.product_id)) return false;
+        seen.add(p.product_id);
+        return true;
+    });
 
     // Text search
     if (searchQuery.value.trim()) {
@@ -1730,6 +2213,7 @@ async function openModal(product, initialTab = 'filters') {
         open: true, product, loading: true, saving: false, suggesting: false,
         assignedCategories: [], assignedFilters: [],
         assignedVariants: [], suggestingVariants: false, variantSuggestions: [], savingVariants: false, variantSearch: '', selectedVariantIds: [],
+        variantGroups: { groups: [], variants: [] },
         assignedRelated: [],  suggestingRelated: false,  relatedSuggestions: [],  savingRelated: false,  relatedSearch: '',  selectedRelatedIds: [],
     };
     aiSuggestions.value = [];
@@ -1744,16 +2228,18 @@ async function openModal(product, initialTab = 'filters') {
     showGroupMenu.value = false;
 
     try {
-        const [catRes, filterRes, variantRes, relatedRes] = await Promise.all([
+        const [catRes, filterRes, variantRes, relatedRes, groupsRes] = await Promise.all([
             axios.get(route('products.categories', product.product_id)),
             axios.get(route('products.filters', product.product_id)),
             axios.get(route('products.variants', product.product_id)),
             axios.get(route('products.related', product.product_id)),
+            axios.get(route('products.variant-groups', product.product_id)),
         ]);
         modal.value.assignedCategories = catRes.data.map(id => categoryMap.value[id]).filter(Boolean);
         modal.value.assignedFilters    = filterRes.data.map(id => filterMap.value[id]).filter(Boolean);
         modal.value.assignedVariants   = variantRes.data;
         modal.value.assignedRelated    = relatedRes.data;
+        modal.value.variantGroups      = groupsRes.data;
     } catch {
         showToast('Nepodarilo sa načítať dáta produktu', 'error');
     } finally {
@@ -1800,11 +2286,11 @@ async function saveAll() {
 
 const variantPickerProducts = computed(() => {
     if (!modal.value.product) return [];
-    const excludeIds = new Set([
-        modal.value.product.product_id,
-        ...modal.value.assignedVariants.map(v => v.product_id),
-    ]);
-    let list = props.products.filter(p => !excludeIds.has(p.product_id));
+    const currentId = modal.value.product.product_id;
+    const assignedIds = new Set(modal.value.assignedVariants.map(v => v.product_id));
+    let list = props.products
+        .filter(p => p.product_id !== currentId)
+        .map(p => ({ ...p, alreadyAssigned: assignedIds.has(p.product_id) }));
     const q = modal.value.variantSearch.trim().toLowerCase();
     if (q) list = list.filter(p => p.name.toLowerCase().includes(q));
     return list;
@@ -1812,11 +2298,11 @@ const variantPickerProducts = computed(() => {
 
 const relatedPickerProducts = computed(() => {
     if (!modal.value.product) return [];
-    const excludeIds = new Set([
-        modal.value.product.product_id,
-        ...modal.value.assignedRelated.map(r => r.product_id),
-    ]);
-    let list = props.products.filter(p => !excludeIds.has(p.product_id));
+    const currentId = modal.value.product.product_id;
+    const assignedIds = new Set(modal.value.assignedRelated.map(r => r.product_id));
+    let list = props.products
+        .filter(p => p.product_id !== currentId)
+        .map(p => ({ ...p, alreadyAssigned: assignedIds.has(p.product_id) }));
     const q = modal.value.relatedSearch.trim().toLowerCase();
     if (q) list = list.filter(p => p.name.toLowerCase().includes(q));
     return list;
@@ -2256,7 +2742,214 @@ function handleOutsideClick(e) {
     }
     if (barGroupWrapRef.value && !barGroupWrapRef.value.contains(e.target)) showBarGroupMenu.value = false;
     if (barValueWrapRef.value && !barValueWrapRef.value.contains(e.target)) showBarValueMenu.value = false;
+    if (msfGroupWrapRef.value && !msfGroupWrapRef.value.contains(e.target)) msfShowGroupMenu.value = false;
+    if (msfFilterWrapRef.value && !msfFilterWrapRef.value.contains(e.target)) msfShowFilterMenu.value = false;
 }
 onMounted(() => document.addEventListener('mousedown', handleOutsideClick));
 onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsideClick));
+
+// ─── Multiselect ──────────────────────────────────────────────────────────────
+
+const selectedProductIds = ref(new Set());
+
+const selectedProducts = computed(() =>
+    filteredProducts.value.filter(p => selectedProductIds.value.has(p.product_id))
+);
+
+function toggleProductSelect(productId, event) {
+    event.stopPropagation();
+    const s = new Set(selectedProductIds.value);
+    s.has(productId) ? s.delete(productId) : s.add(productId);
+    selectedProductIds.value = s;
+}
+
+function clearSelection() { selectedProductIds.value = new Set(); }
+
+// ─── Multiselect: Varianty modal ──────────────────────────────────────────────
+
+const msVariants = ref({ open: false, saving: false, group: [] });
+
+function openMsVariants() {
+    msVariants.value = { open: true, saving: false, group: [...selectedProducts.value] };
+}
+
+async function confirmMsVariants() {
+    const group = msVariants.value.group;
+    if (group.length < 2) return;
+    msVariants.value.saving = true;
+    const [master, ...rest] = group;
+    try {
+        await axios.post(route('products.save-variants', master.product_id), {
+            variant_ids: rest.map(p => p.product_id),
+        });
+        for (const p of group) {
+            variantCounts.value[p.product_id] = (variantCounts.value[p.product_id] ?? 0) + (group.length - 1);
+        }
+        showToast(`Uložené — ${group.length} produktov prepojených ako varianty`);
+        clearSelection();
+        msVariants.value.open = false;
+    } catch {
+        showToast('Nepodarilo sa uložiť varianty', 'error');
+    } finally {
+        msVariants.value.saving = false;
+    }
+}
+
+// ─── Multiselect: Súvisiace modal ─────────────────────────────────────────────
+
+const msRelated = ref({ open: false, saving: false, group: [] });
+
+function openMsRelated() {
+    msRelated.value = { open: true, saving: false, group: [...selectedProducts.value] };
+}
+
+async function confirmMsRelated() {
+    const group = msRelated.value.group;
+    if (group.length < 2) return;
+    msRelated.value.saving = true;
+    try {
+        // Full mesh: each unique pair (i < j) — bidirectional links cover all combos
+        for (let i = 0; i < group.length; i++) {
+            const relatedIds = group.slice(i + 1).map(p => p.product_id);
+            if (relatedIds.length > 0) {
+                await axios.post(route('products.save-related', group[i].product_id), { related_ids: relatedIds });
+            }
+        }
+        for (const p of group) {
+            relatedCounts.value[p.product_id] = (relatedCounts.value[p.product_id] ?? 0) + (group.length - 1);
+        }
+        showToast(`Uložené — ${group.length} produktov prepojených ako súvisiace`);
+        clearSelection();
+        msRelated.value.open = false;
+    } catch {
+        showToast('Nepodarilo sa uložiť súvisiace', 'error');
+    } finally {
+        msRelated.value.saving = false;
+    }
+}
+
+// ─── Multiselect: Filtre modal ────────────────────────────────────────────────
+
+const msFilters = ref({
+    open: false,
+    tab: 'manual',
+    saving: false,
+    savingProgress: { done: 0, total: 0 },
+});
+
+const msfShowGroupMenu  = ref(false);
+const msfGroupQuery     = ref('');
+const msfGroupInputRef  = ref(null);
+const msfGroupWrapRef   = ref(null);
+const msfSelectedGroup  = ref(null);
+
+const msfShowFilterMenu  = ref(false);
+const msfFilterQuery     = ref('');
+const msfFilterInputRef  = ref(null);
+const msfFilterWrapRef   = ref(null);
+const msfSelectedFilter  = ref(null);
+
+const msfAvailableGroups = computed(() => {
+    if (!msfGroupQuery.value.trim()) return allGroupNames.value;
+    const q = msfGroupQuery.value.toLowerCase();
+    return allGroupNames.value.filter(n => n.toLowerCase().includes(q));
+});
+
+const msfAvailableFilters = computed(() => {
+    if (!msfSelectedGroup.value) return [];
+    const list = props.filters.filter(f => f.group_name === msfSelectedGroup.value);
+    if (!msfFilterQuery.value.trim()) return list;
+    const q = msfFilterQuery.value.toLowerCase();
+    return list.filter(f => f.name.toLowerCase().includes(q));
+});
+
+function openMsFilters() {
+    msFilters.value = { open: true, tab: 'manual', saving: false, savingProgress: { done: 0, total: 0 } };
+    msfSelectedGroup.value = null;
+    msfSelectedFilter.value = null;
+    msfGroupQuery.value = '';
+    msfFilterQuery.value = '';
+}
+
+async function openMsfGroupMenu() {
+    msfShowGroupMenu.value = true;
+    msfGroupQuery.value = '';
+    await nextTick();
+    msfGroupInputRef.value?.focus();
+}
+
+function selectMsfGroup(name) {
+    msfSelectedGroup.value = name;
+    msfGroupQuery.value = '';
+    msfShowGroupMenu.value = false;
+    msfSelectedFilter.value = null;
+    msfFilterQuery.value = '';
+}
+
+async function openMsfFilterMenu() {
+    if (!msfSelectedGroup.value) return;
+    msfShowFilterMenu.value = true;
+    msfFilterQuery.value = '';
+    await nextTick();
+    msfFilterInputRef.value?.focus();
+}
+
+function selectMsfFilter(f) {
+    msfSelectedFilter.value = f;
+    msfFilterQuery.value = '';
+    msfShowFilterMenu.value = false;
+}
+
+async function confirmMsFiltersManual() {
+    if (!msfSelectedFilter.value) return;
+    const targets = [...selectedProducts.value];
+    const filterId = msfSelectedFilter.value.filter_id;
+    msFilters.value.saving = true;
+    msFilters.value.savingProgress = { done: 0, total: targets.length };
+    try {
+        for (const product of targets) {
+            const res = await axios.get(route('products.filters', product.product_id));
+            const existing = res.data ?? [];
+            if (!existing.includes(filterId)) {
+                await axios.post(route('products.sync-filters', product.product_id), {
+                    filter_ids: [...existing, filterId],
+                });
+                hasFiltersSet.value.add(product.product_id);
+            }
+            msFilters.value.savingProgress.done++;
+        }
+        showToast(`Filter „${msfSelectedFilter.value.name}" priradený ${targets.length} produktom`);
+        msfSelectedFilter.value = null;
+        msfSelectedGroup.value = null;
+        msFilters.value.open = false;
+    } catch {
+        showToast('Chyba pri priraďovaní filtrov', 'error');
+    } finally {
+        msFilters.value.saving = false;
+    }
+}
+
+async function startMsFiltersAI() {
+    const targets = [...selectedProducts.value];
+    msFilters.value.saving = true;
+    msFilters.value.savingProgress = { done: 0, total: targets.length };
+    const collected = [];
+    for (const product of targets) {
+        try {
+            const res = await axios.post(route('products.suggest-filters', product.product_id));
+            const filters = (res.data.suggestions ?? []).map(s => ({ ...s }));
+            if (filters.length > 0) {
+                collected.push({ product, filters, skip: false, descExpanded: false });
+            }
+        } catch { /* skip */ }
+        msFilters.value.savingProgress.done++;
+    }
+    msFilters.value.saving = false;
+    msFilters.value.open = false;
+    if (collected.length === 0) {
+        showToast('AI nenašla žiadne filtre na priradenie');
+        return;
+    }
+    review.value = { open: true, items: collected, saving: false };
+}
 </script>
