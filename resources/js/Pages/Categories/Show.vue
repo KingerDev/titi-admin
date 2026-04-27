@@ -1125,25 +1125,25 @@
                          style="max-height: 90vh">
 
                         <!-- Header -->
-                        <div class="flex items-center gap-3 border-b border-gray-100 px-5 py-4 flex-shrink-0">
-                            <div class="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                        <div class="flex items-center gap-4 border-b border-gray-100 px-5 py-4 flex-shrink-0">
+                            <div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
                                 <img v-if="modal.product?.image"
                                      :src="modal.product.image"
                                      :alt="modal.product.name"
-                                     class="h-full w-full object-cover"
+                                     class="h-full w-full object-contain"
                                      @error="$event.target.style.display='none'" />
                                 <div v-else class="flex h-full items-center justify-center">
-                                    <svg class="h-5 w-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
                                 </div>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold text-gray-800 truncate">{{ modal.product?.name }}</p>
-                                <p class="text-xs text-gray-400">Kategórie &amp; filtre</p>
+                                <p class="text-sm font-semibold text-gray-800">{{ modal.product?.name }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Kategórie &amp; filtre</p>
                             </div>
-                            <button @click="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
+                            <button @click="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 self-start">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>

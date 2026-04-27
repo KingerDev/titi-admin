@@ -616,10 +616,36 @@ class ProductController extends Controller
 
     private function detectVariantsViaAI(array $target, array $candidates): array
     {
-        $candidateLines = array_map(
-            fn($c) => "ID {$c['product_id']}: \"{$c['name']}\"",
-            $candidates
-        );
+        $allCandidateIds = array_column($candidates, 'product_id');
+
+        // Load filter names for candidates
+        $filterNamesByProduct = [];
+        if (!empty($allCandidateIds)) {
+            $fRows = DB::connection('titi')
+                ->table('titi_product_filter as pf')
+                ->join('titi_filter_description as fd', function ($j) {
+                    $j->on('pf.filter_id', '=', 'fd.filter_id')->where('fd.language_id', 2);
+                })
+                ->whereIn('pf.product_id', $allCandidateIds)
+                ->select('pf.product_id', 'fd.name')
+                ->get()
+                ->groupBy('product_id');
+
+            foreach ($fRows as $pid => $rows) {
+                $filterNamesByProduct[$pid] = $rows->pluck('name')->take(5)->implode(', ');
+            }
+        }
+
+        // Load descriptions for candidates
+        $descByProduct = $this->loadCandidateDescriptions($allCandidateIds);
+
+        $candidateLines = array_map(function ($c) use ($filterNamesByProduct, $descByProduct) {
+            $fStr  = $filterNamesByProduct[$c['product_id']] ?? '';
+            $fPart = $fStr ? " [{$fStr}]" : '';
+            $desc  = $descByProduct[$c['product_id']] ?? '';
+            $dPart = $desc ? " — \"{$desc}\"" : '';
+            return "ID {$c['product_id']}: \"{$c['name']}\"{$fPart}{$dPart}";
+        }, $candidates);
 
         // Detect if target has a type marker to include in prompt context
         $targetMarker = $this->extractProductTypeMarker($target['name']);
@@ -638,23 +664,27 @@ class ProductController extends Controller
             "- iný model/typ produktu (napr. L=ľavák vs P=pravák)",
             "- príslušenstvo alebo doplnok",
             "- úplne iná kategória produktu" . $markerRule,
+            "Ak si nie si istý podľa názvu, použi popis produktu na overenie.",
             "Odpovedaj iba JSON: {\"groups\": [[product_id, product_id, ...], ...]}",
             "Každá skupina obsahuje ID produktov, ktoré sú variantmi navzájom (vrátane cieľového produktu ak je variantom).",
             "Ak žiadny kandidát nie je variant cieľového produktu, vráť {\"groups\": []}.",
         ]);
 
-        $userPrompt = "Cieľový produkt (ID: {$target['product_id']}): \"{$target['name']}\"\n\n"
+        $targetDesc = $target['description'] ?? '';
+        $targetDescPart = $targetDesc ? "\nPopis: \"" . mb_substr($targetDesc, 0, 500) . "\"" : '';
+
+        $userPrompt = "Cieľový produkt (ID: {$target['product_id']}): \"{$target['name']}\"{$targetDescPart}\n\n"
             . "Kandidáti (len tí istého typu ako cieľový produkt):\n" . implode("\n", $candidateLines) . "\n\n"
             . "Vráť skupiny product_id, ktoré patria k sebe ako farební/veľkostní varianty.";
 
         try {
-            $response = Http::timeout(20)->withHeaders([
+            $response = Http::timeout(25)->withHeaders([
                 'Authorization' => 'Bearer ' . config('services.openai.key'),
                 'Content-Type'  => 'application/json',
             ])->post('https://api.openai.com/v1/chat/completions', [
                 'model'           => 'gpt-4o-mini',
                 'temperature'     => 0,
-                'max_tokens'      => 400,
+                'max_tokens'      => 600,
                 'response_format' => ['type' => 'json_object'],
                 'messages'        => [
                     ['role' => 'system', 'content' => $systemPrompt],
@@ -675,12 +705,7 @@ class ProductController extends Controller
     {
         $filterNamesStr = implode(', ', array_slice($target['filter_names'], 0, 8));
 
-        $candidateLines = array_map(function ($c) {
-            $filterPreviews = array_slice($c['filter_ids'], 0, 0); // we use names below
-            return "ID {$c['product_id']}: \"{$c['name']}\"";
-        }, $candidates);
-
-        // Load filter names for candidates for richer context
+        // Load filter names for candidates
         $allCandidateIds = array_column($candidates, 'product_id');
         $filterNamesByProduct = [];
         if (!empty($allCandidateIds)) {
@@ -699,10 +724,15 @@ class ProductController extends Controller
             }
         }
 
-        $candidateLines = array_map(function ($c) use ($filterNamesByProduct) {
-            $fStr = $filterNamesByProduct[$c['product_id']] ?? '';
+        // Load descriptions for candidates
+        $descByProduct = $this->loadCandidateDescriptions($allCandidateIds);
+
+        $candidateLines = array_map(function ($c) use ($filterNamesByProduct, $descByProduct) {
+            $fStr  = $filterNamesByProduct[$c['product_id']] ?? '';
             $fPart = $fStr ? " [{$fStr}]" : '';
-            return "ID {$c['product_id']}: \"{$c['name']}\"{$fPart}";
+            $desc  = $descByProduct[$c['product_id']] ?? '';
+            $dPart = $desc ? " — \"{$desc}\"" : '';
+            return "ID {$c['product_id']}: \"{$c['name']}\"{$fPart}{$dPart}";
         }, $candidates);
 
         $systemPrompt = implode("\n", [
@@ -713,6 +743,7 @@ class ProductController extends Controller
             "- Príklady správnych vzťahov: ceruzka→strúhadlo/guma, zošit→obal na zošit/menovky/registre, pero→náplň do pera/puzdro, farby→štetce/paleta, lepiaca páska→dávkovač pásky",
             "- Produkty môžu byť z INEJ kategórie — to je v poriadku (dokonca žiadúce)",
             "- Zdieľané vlastnosti (rovnaký formát A5, rovnaká značka) sú dobrý signál",
+            "- Použi popis produktu na lepšie pochopenie jeho funkcie a použitia",
             "",
             "NEVYBERAJ:",
             "- Rovnaký produkt v inej farbe alebo veľkosti (to sú varianty, nie súvisiace)",
@@ -722,19 +753,22 @@ class ProductController extends Controller
             "Vyber ideálne 3–8 produktov. Ak žiadny kandidát nie je skutočne komplementárny, vráť {\"related\": []}.",
         ]);
 
+        $targetDesc = $target['description'] ?? '';
+        $targetDescPart = $targetDesc ? "\nPopis: \"" . mb_substr($targetDesc, 0, 500) . "\"" : '';
+
         $filterPart = $filterNamesStr ? " [atribúty: {$filterNamesStr}]" : '';
-        $userPrompt = "Hlavný produkt (ID: {$target['product_id']}): \"{$target['name']}\"{$filterPart}\n\n"
-            . "Kandináti na posúdenie (môžu byť z rôznych kategórií):\n" . implode("\n", $candidateLines) . "\n\n"
+        $userPrompt = "Hlavný produkt (ID: {$target['product_id']}): \"{$target['name']}\"{$filterPart}{$targetDescPart}\n\n"
+            . "Kandidáti na posúdenie (môžu byť z rôznych kategórií):\n" . implode("\n", $candidateLines) . "\n\n"
             . "Vyber tie, ktoré zákazník prirodzene kúpi spolu s hlavným produktom (príslušenstvo, doplnky, komplementárne produkty).";
 
         try {
-            $response = Http::timeout(20)->withHeaders([
+            $response = Http::timeout(25)->withHeaders([
                 'Authorization' => 'Bearer ' . config('services.openai.key'),
                 'Content-Type'  => 'application/json',
             ])->post('https://api.openai.com/v1/chat/completions', [
                 'model'           => 'gpt-4o-mini',
                 'temperature'     => 0,
-                'max_tokens'      => 300,
+                'max_tokens'      => 400,
                 'response_format' => ['type' => 'json_object'],
                 'messages'        => [
                     ['role' => 'system', 'content' => $systemPrompt],
@@ -749,6 +783,24 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             return [];
         }
+    }
+
+    private function loadCandidateDescriptions(array $productIds): array
+    {
+        if (empty($productIds)) return [];
+
+        return DB::connection('titi')
+            ->table('titi_product_description')
+            ->whereIn('product_id', $productIds)
+            ->where('language_id', 2)
+            ->pluck('description', 'product_id')
+            ->map(function ($html) {
+                $withBreaks = preg_replace('/<(br\s*\/?\s*|\/p|\/li|\/div)\s*>/i', ' ', $html ?? '');
+                $plain = html_entity_decode(strip_tags($withBreaks), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                return mb_substr(preg_replace('/\s+/', ' ', trim($plain)), 0, 150);
+            })
+            ->filter()
+            ->all();
     }
 
     private function saveVariantPairs(int $productId, array $variantIds): void
