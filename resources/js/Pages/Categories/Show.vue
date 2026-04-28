@@ -1126,11 +1126,12 @@
 
                         <!-- Header -->
                         <div class="flex items-center gap-4 border-b border-gray-100 px-5 py-4 flex-shrink-0">
-                            <div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                            <div class="h-40 w-40 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
                                 <img v-if="modal.product?.image"
                                      :src="modal.product.image"
                                      :alt="modal.product.name"
-                                     class="h-full w-full object-contain"
+                                     class="h-full w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                     @click="openImageLightbox(modal.product.image)"
                                      @error="$event.target.style.display='none'" />
                                 <div v-else class="flex h-full items-center justify-center">
                                     <svg class="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1753,6 +1754,30 @@
                 </Transition>
             </div>
         </Transition>
+
+        <!-- Image Lightbox -->
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="lightbox.open"
+                 class="fixed inset-0 z-[70] flex items-center justify-center bg-black/90"
+                 @click="closeLightbox">
+                <img :src="lightbox.src"
+                     class="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+                     @click.stop />
+                <button @click="closeLightbox"
+                        class="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/25 transition-colors">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </Transition>
     </AuthenticatedLayout>
 </template>
 
@@ -2214,6 +2239,8 @@ const modal = ref({
     selectedRelatedIds: [],
 });
 
+const lightbox = ref({ open: false, src: '' });
+
 // Reactive badge counts (updated when user adds/removes from modal)
 const variantCounts = ref(Object.fromEntries(props.products.map(p => [p.product_id, p.variant_count ?? 0])));
 const relatedCounts  = ref(Object.fromEntries(props.products.map(p => [p.product_id, p.related_count ?? 0])));
@@ -2267,6 +2294,15 @@ function closeModal() {
     showCatMenu.value = false;
     showFilterMenu.value = false;
     showGroupMenu.value = false;
+}
+
+function openImageLightbox(src) {
+    lightbox.value.src = src;
+    lightbox.value.open = true;
+}
+
+function closeLightbox() {
+    lightbox.value.open = false;
 }
 
 async function saveAll() {
@@ -2755,8 +2791,20 @@ function handleOutsideClick(e) {
     if (msfGroupWrapRef.value && !msfGroupWrapRef.value.contains(e.target)) msfShowGroupMenu.value = false;
     if (msfFilterWrapRef.value && !msfFilterWrapRef.value.contains(e.target)) msfShowFilterMenu.value = false;
 }
-onMounted(() => document.addEventListener('mousedown', handleOutsideClick));
-onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsideClick));
+function handleKeydown(e) {
+    if (e.key === 'Escape') {
+        if (lightbox.value.open) closeLightbox();
+        else if (modal.value.open) closeModal();
+    }
+}
+onMounted(() => {
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeydown);
+});
+onBeforeUnmount(() => {
+    document.removeEventListener('mousedown', handleOutsideClick);
+    document.removeEventListener('keydown', handleKeydown);
+});
 
 // ─── Multiselect ──────────────────────────────────────────────────────────────
 
