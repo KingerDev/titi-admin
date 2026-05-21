@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\CampaignController;
+use App\Http\Controllers\CampaignPushController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\FilterController;
 use App\Http\Controllers\FilterGroupController;
 use App\Http\Controllers\ProductController;
@@ -22,6 +25,24 @@ Route::get('/dashboard', function () {
 })->middleware('admin.auth')->name('dashboard');
 
 Route::middleware('admin.auth')->group(function () {
+    // ── Notifications ─────────────────────────────────────────────────────────
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+
+    // ── Campaigns ────────────────────────────────────────────────────────────
+    Route::get('/campaigns',            [CampaignController::class, 'index'])->name('campaigns.index');
+    Route::get('/campaigns/create',     [CampaignController::class, 'create'])->name('campaigns.create');
+    Route::post('/campaigns',           [CampaignController::class, 'store'])->name('campaigns.store');
+    Route::get('/campaigns/{id}/edit',  [CampaignController::class, 'edit'])->name('campaigns.edit');
+    Route::put('/campaigns/{id}',       [CampaignController::class, 'update'])->name('campaigns.update');
+    Route::delete('/campaigns/{id}',    [CampaignController::class, 'destroy'])->name('campaigns.destroy');
+
+    // ── Campaign pushes ───────────────────────────────────────────────────────
+    Route::get('/campaigns/{campaignId}/pushes',                    [CampaignPushController::class, 'index'])->name('campaign-pushes.index');
+    Route::post('/campaigns/{campaignId}/pushes',                   [CampaignPushController::class, 'store'])->name('campaign-pushes.store');
+    Route::delete('/campaigns/{campaignId}/pushes/{pushId}',        [CampaignPushController::class, 'destroy'])->name('campaign-pushes.destroy');
+    Route::get('/campaigns/{campaignId}/pushes/{pushId}/stats',     [CampaignPushController::class, 'stats'])->name('campaign-pushes.stats');
+
+    // ── Filters ──────────────────────────────────────────────────────────────
     Route::get('/filters', [FilterGroupController::class, 'index'])->name('filters.index');
     Route::post('/filter-groups', [FilterGroupController::class, 'store'])->name('filter-groups.store');
     Route::post('/filters', [FilterController::class, 'store'])->name('filters.store');

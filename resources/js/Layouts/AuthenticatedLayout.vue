@@ -52,6 +52,18 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Kategórie
                                 </NavLink>
+                                <NavLink
+                                    :href="route('campaigns.index')"
+                                    :active="route().current('campaigns.*') && !route().current('campaign-pushes.*')"
+                                >
+                                    Kampane
+                                </NavLink>
+                                <NavLink
+                                    :href="route('notifications.index')"
+                                    :active="route().current('notifications.*') || route().current('campaign-pushes.*')"
+                                >
+                                    Notifikácie
+                                </NavLink>
                             </div>
                         </div>
 
@@ -165,6 +177,18 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('categories.*')"
                         >
                             Kategórie
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('campaigns.index')"
+                            :active="route().current('campaigns.*') && !route().current('campaign-pushes.*')"
+                        >
+                            Kampane
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('notifications.index')"
+                            :active="route().current('notifications.*') || route().current('campaign-pushes.*')"
+                        >
+                            Notifikácie
                         </ResponsiveNavLink>
                     </div>
 
