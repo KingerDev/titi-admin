@@ -87,7 +87,7 @@ class OneSignalService
             'app_id'   => $this->appId,
             'headings' => ['en' => $campaign->title],
             'contents' => ['en' => $campaign->short_description],
-            'data'     => ['deep_link' => $campaign->action_url],
+            'data'     => ['deep_link' => $push->push_url ?? $campaign->action_url],
         ];
 
         if ($campaign->image) {

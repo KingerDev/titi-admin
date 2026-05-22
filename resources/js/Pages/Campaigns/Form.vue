@@ -169,7 +169,7 @@ const statusClass  = { draft: 'bg-gray-100 text-gray-600', testing: 'bg-amber-10
 
                     <div>
                         <div class="flex items-center justify-between mb-1">
-                            <label class="block text-sm font-medium text-gray-700">Deep link</label>
+                            <label class="block text-sm font-medium text-gray-700">Odkaz tlačidla v detaile</label>
                             <button v-if="isEdit" type="button" @click="useCampaignLink"
                                     class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition-colors">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -183,7 +183,7 @@ const statusClass  = { draft: 'bg-gray-100 text-gray-600', testing: 'bg-amber-10
                             <input v-model="actionPath" type="text" placeholder="titi-predajne"
                                    class="flex-1 px-3 py-2 text-sm font-mono focus:outline-none"/>
                         </div>
-                        <p class="mt-1 text-xs text-gray-400">Napr. titi-predajne · produkty/skolske-tasky · ucet/centrum-upozorneni/42</p>
+                        <p class="mt-1 text-xs text-gray-400">Kam sa presmeruje používateľ po kliknutí na tlačidlo v detaile kampane.</p>
                     </div>
 
                     <!-- Status -->

@@ -28,6 +28,7 @@ class CampaignPushController extends Controller
                 'condition'        => $p->condition,
                 'send_at'          => $p->send_at?->toIso8601String(),
                 'status'           => $p->status,
+                'push_url'         => $p->push_url,
                 'created_at'       => $p->created_at->toIso8601String(),
             ]);
 
@@ -55,6 +56,7 @@ class CampaignPushController extends Controller
             'condition'        => 'required|in:none,unread_only',
             'send_mode'        => 'required|in:now,scheduled',
             'send_at'          => 'nullable|date|after:now|required_if:send_mode,scheduled',
+            'push_url'         => 'nullable|string|max:500',
         ]);
 
         $push = new CampaignPush([
@@ -65,6 +67,7 @@ class CampaignPushController extends Controller
             'condition'        => $data['condition'],
             'status'           => 'pending',
             'send_at'          => $data['send_mode'] === 'scheduled' ? $data['send_at'] : null,
+            'push_url'         => $data['push_url'] ?? null,
         ]);
 
         $sendAfter = $data['send_mode'] === 'scheduled'

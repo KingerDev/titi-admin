@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     campaigns: Array,
@@ -45,6 +45,8 @@ function selectCampaign(id) {
 
 const showModal = ref(false);
 
+const SCHEME = 'titiapp://';
+
 const pushForm = useForm({
     target_type:      'all',
     target_store_id:  null,
@@ -52,11 +54,21 @@ const pushForm = useForm({
     condition:        'none',
     send_mode:        'now',
     send_at:          '',
+    push_url:         '',
 });
+
+const pushUrlPath = ref('');
+
+watch(pushUrlPath, (v) => { pushForm.push_url = v ? SCHEME + v : ''; });
+
+function useCampaignPushLink() {
+    pushUrlPath.value = `ucet/centrum-upozorneni/${selectedCampaignId.value}`;
+}
 
 function openModal() {
     if (!selectedCampaignId.value) return;
     pushForm.reset();
+    pushUrlPath.value = `ucet/centrum-upozorneni/${selectedCampaignId.value}`;
     showModal.value = true;
 }
 
@@ -405,6 +417,26 @@ function storeName(id) {
                                            true-value="unread_only" false-value="none" class="rounded text-indigo-600"/>
                                     <span class="text-sm text-gray-700">Poslať len tým, ktorí si kampaň ešte neprečítali</span>
                                 </label>
+                            </div>
+
+                            <!-- Push URL -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-sm font-medium text-gray-700">Kam smeruje notifikácia</label>
+                                    <button type="button" @click="useCampaignPushLink"
+                                            class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition-colors">
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                        </svg>
+                                        Otvoriť túto kampaň
+                                    </button>
+                                </div>
+                                <div class="flex rounded-lg border border-gray-200 overflow-hidden focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400">
+                                    <span class="flex items-center bg-gray-100 px-3 text-xs font-mono text-gray-500 border-r border-gray-200 whitespace-nowrap select-none">titiapp://</span>
+                                    <input v-model="pushUrlPath" type="text" placeholder="titi-predajne"
+                                           class="flex-1 px-3 py-2 text-sm font-mono focus:outline-none"/>
+                                </div>
+                                <p v-if="pushForm.errors.push_url" class="mt-1 text-xs text-red-500">{{ pushForm.errors.push_url }}</p>
                             </div>
 
                             <!-- Send mode -->

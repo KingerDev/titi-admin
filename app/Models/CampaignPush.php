@@ -20,6 +20,7 @@ class CampaignPush extends Model
         'condition',
         'send_at',
         'status',
+        'push_url',
     ];
 
     protected $casts = [
