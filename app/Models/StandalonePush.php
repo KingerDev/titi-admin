@@ -3,26 +3,32 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CampaignPush extends Model
+class StandalonePush extends Model
 {
     protected $connection = 'titi';
-    protected $table = 'titi_campaign_pushes';
+    protected $table = 'titi_standalone_pushes';
     public $timestamps = false;
 
     protected $fillable = [
-        'notification_id',
         'onesignal_id',
+        'title',
+        'message',
+        'subtitle',
+        'image',
+        'push_url',
         'target_type',
         'target_store_id',
         'target_tester_id',
         'target_segment',
         'target_filters',
-        'condition',
+        'ttl',
+        'priority',
+        'collapse_id',
+        'ios_badge_type',
+        'ios_badge_count',
         'send_at',
         'status',
-        'push_url',
         'recipients',
         'delivered',
         'failed',
@@ -33,17 +39,9 @@ class CampaignPush extends Model
     protected $casts = [
         'send_at'         => 'datetime',
         'created_at'      => 'datetime',
+        'priority'        => 'integer',
+        'ttl'             => 'integer',
         'target_filters'  => 'array',
         'stats_synced_at' => 'datetime',
     ];
-
-    public function campaign(): BelongsTo
-    {
-        return $this->belongsTo(Campaign::class, 'notification_id');
-    }
-
-    public function getCampaignAttribute(): ?Campaign
-    {
-        return $this->campaign()->first();
-    }
 }

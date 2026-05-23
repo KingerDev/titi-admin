@@ -60,9 +60,15 @@ const showingNavigationDropdown = ref(false);
                                 </NavLink>
                                 <NavLink
                                     :href="route('notifications.index')"
-                                    :active="route().current('notifications.*') || route().current('campaign-pushes.*')"
+                                    :active="(route().current('notifications.*') && !route().current('notifications.stats')) || route().current('campaign-pushes.*')"
                                 >
                                     Notifikácie
+                                </NavLink>
+                                <NavLink
+                                    :href="route('notifications.stats')"
+                                    :active="route().current('notifications.stats')"
+                                >
+                                    Štatistiky
                                 </NavLink>
                             </div>
                         </div>
@@ -186,9 +192,15 @@ const showingNavigationDropdown = ref(false);
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('notifications.index')"
-                            :active="route().current('notifications.*') || route().current('campaign-pushes.*')"
+                            :active="(route().current('notifications.*') && !route().current('notifications.stats')) || route().current('campaign-pushes.*')"
                         >
                             Notifikácie
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('notifications.stats')"
+                            :active="route().current('notifications.stats')"
+                        >
+                            Štatistiky
                         </ResponsiveNavLink>
                     </div>
 

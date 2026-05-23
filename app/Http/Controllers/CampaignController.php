@@ -39,6 +39,7 @@ class CampaignController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateCampaign($request);
+        $data = $this->convertDatesToUtc($data);
 
         $campaign = Campaign::create(array_merge($data, [
             'is_active'  => $data['status'] === 'active',
@@ -62,8 +63,8 @@ class CampaignController extends Controller
                 'short_description' => $campaign->short_description,
                 'long_description'  => $campaign->long_description,
                 'action_url'        => $campaign->action_url,
-                'starts_at'         => $campaign->starts_at?->format('Y-m-d\TH:i'),
-                'expires_at'        => $campaign->expires_at?->format('Y-m-d\TH:i'),
+                'starts_at'         => $campaign->starts_at?->setTimezone('Europe/Bratislava')->format('Y-m-d\TH:i'),
+                'expires_at'        => $campaign->expires_at?->setTimezone('Europe/Bratislava')->format('Y-m-d\TH:i'),
                 'status'            => $campaign->status,
                 'is_active'         => $campaign->is_active,
                 'pushes_count'      => $campaign->pushes_count,
@@ -75,6 +76,7 @@ class CampaignController extends Controller
     {
         $campaign = Campaign::findOrFail($id);
         $data     = $this->validateCampaign($request);
+        $data     = $this->convertDatesToUtc($data);
 
         $campaign->update(array_merge($data, [
             'is_active'  => $data['status'] === 'active',
@@ -101,6 +103,17 @@ class CampaignController extends Controller
     }
 
     // ── Private helpers ─────────────────────────────────────────────────────
+
+    private function convertDatesToUtc(array $data): array
+    {
+        foreach (['starts_at', 'expires_at'] as $field) {
+            if (!empty($data[$field])) {
+                $data[$field] = \Carbon\Carbon::createFromFormat('Y-m-d\TH:i', $data[$field], 'Europe/Bratislava')
+                    ->utc();
+            }
+        }
+        return $data;
+    }
 
     private function validateCampaign(Request $request): array
     {

@@ -4,6 +4,9 @@ use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\CampaignPushController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationTemplateController;
+use App\Http\Controllers\NotificationWebhookController;
+use App\Http\Controllers\StandalonePushController;
 use App\Http\Controllers\FilterController;
 use App\Http\Controllers\FilterGroupController;
 use App\Http\Controllers\ProductController;
@@ -27,6 +30,32 @@ Route::get('/dashboard', function () {
 Route::middleware('admin.auth')->group(function () {
     // ── Notifications ─────────────────────────────────────────────────────────
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+
+    // ── Notifications – OneSignal data ───────────────────────────────────────
+    Route::get('/notifications/app-stats',  [NotificationController::class, 'appStats'])->name('notifications.app-stats');
+    Route::get('/notifications/segments',   [NotificationController::class, 'segments'])->name('notifications.segments');
+    Route::get('/notifications/history',    [NotificationController::class, 'history'])->name('notifications.history');
+    Route::get('/notifications/scheduled',  [NotificationController::class, 'scheduled'])->name('notifications.scheduled');
+    Route::get('/notifications/stats',      [NotificationController::class, 'statsOverview'])->name('notifications.stats');
+
+    // ── Notification templates ────────────────────────────────────────────────
+    Route::get('/notification-templates',         [NotificationTemplateController::class, 'index'])->name('notification-templates.index');
+    Route::post('/notification-templates',        [NotificationTemplateController::class, 'store'])->name('notification-templates.store');
+    Route::delete('/notification-templates/{id}', [NotificationTemplateController::class, 'destroy'])->name('notification-templates.destroy');
+
+    // ── Standalone pushes ─────────────────────────────────────────────────────
+    Route::post('/standalone-pushes',                [StandalonePushController::class, 'store'])->name('standalone-pushes.store');
+    Route::get('/standalone-pushes/{id}/duplicate',  [StandalonePushController::class, 'duplicate'])->name('standalone-pushes.duplicate');
+    Route::delete('/standalone-pushes/{id}',         [StandalonePushController::class, 'destroy'])->name('standalone-pushes.destroy');
+    Route::get('/standalone-pushes/{id}/stats',      [StandalonePushController::class, 'stats'])->name('standalone-pushes.stats');
+
+    // ── Campaign push duplicate + retry ──────────────────────────────────────
+    Route::get('/campaigns/{campaignId}/pushes/{pushId}/duplicate', [CampaignPushController::class, 'duplicate'])->name('campaign-pushes.duplicate');
+    Route::post('/campaigns/{campaignId}/pushes/{pushId}/retry',    [CampaignPushController::class, 'retry'])->name('campaign-pushes.retry');
+    Route::post('/campaigns/{campaignId}/sync-stats',               [CampaignPushController::class, 'syncCampaignStats'])->name('campaign-pushes.sync-stats');
+
+    // ── Standalone push retry ─────────────────────────────────────────────────
+    Route::post('/standalone-pushes/{id}/retry', [StandalonePushController::class, 'retry'])->name('standalone-pushes.retry');
 
     // ── Campaigns ────────────────────────────────────────────────────────────
     Route::get('/campaigns',            [CampaignController::class, 'index'])->name('campaigns.index');
@@ -82,5 +111,10 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/products/{productId}/suggest-filters', [CategoryController::class, 'suggestFilters'])->name('products.suggest-filters');
     Route::post('/products/{productId}/create-filter', [CategoryController::class, 'createAndAssignFilter'])->name('products.create-filter');
 });
+
+// ── OneSignal webhook (no auth – called by OneSignal servers) ────────────────
+Route::post('/webhook/onesignal', [NotificationWebhookController::class, 'handle'])
+    ->name('webhook.onesignal')
+    ->withoutMiddleware(['web']);
 
 require __DIR__.'/auth.php';
