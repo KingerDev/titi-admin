@@ -53,6 +53,12 @@ const showingNavigationDropdown = ref(false);
                                     Kategórie
                                 </NavLink>
                                 <NavLink
+                                    :href="route('home-cards.index')"
+                                    :active="route().current('home-cards.*')"
+                                >
+                                    Domovské karty
+                                </NavLink>
+                                <NavLink
                                     :href="route('campaigns.index')"
                                     :active="route().current('campaigns.*') && !route().current('campaign-pushes.*')"
                                 >
@@ -183,6 +189,12 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('categories.*')"
                         >
                             Kategórie
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('home-cards.index')"
+                            :active="route().current('home-cards.*')"
+                        >
+                            Domovské karty
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('campaigns.index')"

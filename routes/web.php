@@ -9,6 +9,7 @@ use App\Http\Controllers\NotificationWebhookController;
 use App\Http\Controllers\StandalonePushController;
 use App\Http\Controllers\FilterController;
 use App\Http\Controllers\FilterGroupController;
+use App\Http\Controllers\HomeCardController;
 use App\Http\Controllers\ProductController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -72,6 +73,16 @@ Route::middleware('admin.auth')->group(function () {
     Route::get('/campaigns/{campaignId}/pushes/{pushId}/stats',     [CampaignPushController::class, 'stats'])->name('campaign-pushes.stats');
 
     // ── Filters ──────────────────────────────────────────────────────────────
+    // ── Home cards (domovské karty appky) ───────────────────────────────────
+    Route::get('/home-cards',            [HomeCardController::class, 'index'])->name('home-cards.index');
+    Route::post('/home-cards/reorder',   [HomeCardController::class, 'reorder'])->name('home-cards.reorder');
+    Route::get('/home-cards/search-categories', [HomeCardController::class, 'searchCategories'])->name('home-cards.search-categories');
+    Route::get('/home-cards/create',     [HomeCardController::class, 'create'])->name('home-cards.create');
+    Route::post('/home-cards',           [HomeCardController::class, 'store'])->name('home-cards.store');
+    Route::get('/home-cards/{id}/edit',  [HomeCardController::class, 'edit'])->name('home-cards.edit');
+    Route::put('/home-cards/{id}',       [HomeCardController::class, 'update'])->name('home-cards.update');
+    Route::delete('/home-cards/{id}',    [HomeCardController::class, 'destroy'])->name('home-cards.destroy');
+
     Route::get('/filters', [FilterGroupController::class, 'index'])->name('filters.index');
     Route::post('/filter-groups', [FilterGroupController::class, 'store'])->name('filter-groups.store');
     Route::post('/filters', [FilterController::class, 'store'])->name('filters.store');
