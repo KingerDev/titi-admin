@@ -32,13 +32,11 @@ const form = useForm({
     row_span:           props.card?.row_span           ?? 2,
     app_route:          props.card?.app_route          ?? '',
     external_url:       props.card?.external_url        ?? '',
-    image_url:          props.card?.image_url          ?? '',
     pattern:            props.card?.pattern            ?? 'dots',
     decor:              props.card?.decor             ?? 'bubbles',
     show_arrow:         props.card?.show_arrow         ?? true,
     audience:           props.card?.audience           ?? 'all',
     platform:           props.card?.platform           ?? 'all',
-    loyalty_visibility: props.card?.loyalty_visibility ?? 'any',
     active:             props.card?.active             ?? true,
     valid_from:         props.card?.valid_from         ?? '',
     valid_to:           props.card?.valid_to           ?? '',
@@ -200,7 +198,6 @@ const previewCard = computed(() => ({
     bg_color:       form.bg_color || '#2BC4DE',
     text_color:     form.text_color || '#1B2233',
     top_text_color: form.top_text_color,
-    image_url:      form.image_url,
     col_span:       form.col_span,
     row_span:       form.row_span,
     pattern:        form.pattern,
@@ -250,11 +247,6 @@ const platformOpts = [
     { value: 'all',     label: 'Všetky' },
     { value: 'ios',     label: 'iOS' },
     { value: 'android', label: 'Android' },
-];
-const loyaltyOpts = [
-    { value: 'any', label: 'Vždy' },
-    { value: 'on',  label: 'Len so zapnutým' },
-    { value: 'off', label: 'Len bez vernost.' },
 ];
 const patternOpts = [
     { value: 'none',     label: 'Žiadny' },
@@ -408,14 +400,6 @@ const decorOpts = [
                                 <input v-model="form.top_text_color" type="text" placeholder="#EC2F86" class="flex-1 rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"/>
                             </div>
                             <p v-if="form.errors.top_text_color" class="mt-1 text-xs text-red-500">{{ form.errors.top_text_color }}</p>
-                        </div>
-
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">URL obrázka (dekorácia vpravo dole)</label>
-                            <input v-model="form.image_url" type="url" placeholder="https://..."
-                                   class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"/>
-                            <p class="mt-1 text-xs text-gray-400">Voliteľné. Zobrazí sa priehľadne v rohu karty.</p>
-                            <p v-if="form.errors.image_url" class="mt-1 text-xs text-red-500">{{ form.errors.image_url }}</p>
                         </div>
                     </div>
 
@@ -585,15 +569,6 @@ const decorOpts = [
                                         class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors">{{ o.label }}</button>
                             </div>
                         </div>
-                        <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700">Vernostný program</label>
-                            <div class="flex flex-wrap gap-1.5">
-                                <button v-for="o in loyaltyOpts" :key="o.value" type="button" @click="form.loyalty_visibility = o.value"
-                                        :class="form.loyalty_visibility === o.value ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-                                        class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors">{{ o.label }}</button>
-                            </div>
-                        </div>
-
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <label class="mb-1 block text-sm font-medium text-gray-700">Platná od</label>

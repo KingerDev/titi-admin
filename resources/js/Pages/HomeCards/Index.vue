@@ -27,7 +27,7 @@ const metrics = gridMetrics(PHONE_WIDTH);
 const packed = computed(() => packCards(localCards.value, metrics));
 
 // ── Simulácia kontextu (ako to uvidí konkrétny používateľ) ───────────────────
-const sim = ref({ audience: 'all', platform: 'all', loyalty: 'off' });
+const sim = ref({ audience: 'all', platform: 'all' });
 
 function matchReason(card) {
     if (!card.active) return 'Neaktívna';
@@ -35,8 +35,6 @@ function matchReason(card) {
         return card.audience === 'auth' ? 'Len pre prihlásených' : 'Len pre neprihlásených';
     if (sim.value.platform !== 'all' && card.platform !== 'all' && card.platform !== sim.value.platform)
         return 'Iná platforma (' + card.platform + ')';
-    if (card.loyalty_visibility !== 'any' && card.loyalty_visibility !== sim.value.loyalty)
-        return card.loyalty_visibility === 'on' ? 'Len s vernostným prog.' : 'Len bez vernostného prog.';
     const now = new Date();
     if (card.valid_from && new Date(card.valid_from) > now) return 'Ešte nezačala';
     if (card.valid_to && new Date(card.valid_to) < now) return 'Platnosť vypršala';
@@ -203,17 +201,6 @@ const platformLabel = { all: 'Všetky', ios: 'iOS', android: 'Android' };
                                     <button v-for="(lbl, val) in platformLabel" :key="val" @click="sim.platform = val"
                                             :class="sim.platform === val ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                                             class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors">{{ lbl }}</button>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-medium text-gray-600">Vernostný program</label>
-                                <div class="flex gap-1.5">
-                                    <button @click="sim.loyalty = 'off'"
-                                            :class="sim.loyalty === 'off' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-                                            class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors">Bez</button>
-                                    <button @click="sim.loyalty = 'on'"
-                                            :class="sim.loyalty === 'on' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-                                            class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors">Zapnutý</button>
                                 </div>
                             </div>
                         </div>
